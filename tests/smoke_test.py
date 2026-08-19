@@ -101,6 +101,25 @@ def test_search() -> None:
     terms = search.weighted_terms(["返品"], ["返送"], original_weight=1.0, expanded_weight=0.35)
     check("追加語の重みが元の質問より低い", terms["返送"] < terms["返品"], str(terms))
 
+    # 質問の言い回しを取り除けているか。
+    # 「と言われた」は2文字に分けると「と言」「言わ」になり、漢字を含むため
+    # 内容語として扱われる。資料中で珍しいので重要度が跳ね上がり、
+    # お客様の声に「〜と言われた」と書いてあるだけの無関係な資料が
+    # 本命より上位に来る。実データ705件で実際に起きた。
+    for question, expected in [
+        ("返品したいと言われた", "返品したい"),
+        ("定期便をやめたいと言われました", "定期便をやめたい"),
+        ("解約したいと聞かれました", "解約したい"),
+        ("送料はいくらですか", "送料はいくら"),
+    ]:
+        got = search.strip_framing(question).strip()
+        check(f"言い回しを除去: {question}", got == expected, f"→ {got}")
+    check(
+        "言い回しだけの質問は元の文を残す",
+        search.strip_framing("どうすればいいですか").strip() == "どうすればいいですか",
+        search.strip_framing("どうすればいいですか"),
+    )
+
 
 # ── 4.4 構造化出力の打ち切り検知 ───────────────────────────
 class _Block:

@@ -46,6 +46,37 @@ _HIRAGANA_ONLY = re.compile(r"^[ぁ-んー]+$")
 _FUNCTION_TOKEN_WEIGHT = 0.2
 
 
+# 質問の「言い回し」。何を聞きたいかとは無関係なので、検索する前に取り除く。
+#
+# なぜ必要か：
+#   オペレーターは「返品したいと言われた」のように話し言葉で入力します。
+#   このうち「と言われた」は、2文字ずつに分けると「と言」「言わ」になります。
+#   これらは漢字を含むため内容語として扱われ、しかも資料の中では珍しいので
+#   重要度が高く計算されます。その結果、お客様の声に「〜と言われた」と
+#   書かれているだけの無関係な資料が、本命の「返品」の資料より上に来ます。
+#   実データ705件で実際に起きた現象です。
+#
+# 長いものから順に消します（「と言われました」を先に消さないと
+# 「と言われ」だけが消えて「ました」が残る）。
+_FRAMING_PHRASES = [
+    "と言われました", "と言われている", "と言われてる", "と言われた", "と言われて",
+    "と聞かれました", "と聞かれた", "と聞かれて",
+    "と言っています", "と言っている", "と言ってる", "と言っেた",
+    "とのことです", "と相談されました", "と相談された",
+    "どうすればいいですか", "どうすればいい", "どうしたらいいですか", "どうしたらいい",
+    "教えてください", "教えて欲しい", "教えてほしい",
+    "お客様から", "お客さんから", "お客様に", "でしょうか", "ですか",
+]
+
+
+def strip_framing(text: str) -> str:
+    """質問文から言い回しを取り除く。全部消えてしまう場合は元の文を返す。"""
+    stripped = text
+    for phrase in _FRAMING_PHRASES:
+        stripped = stripped.replace(phrase, " ")
+    return stripped if stripped.strip() else text
+
+
 def normalize(text: str) -> str:
     """全角/半角・大文字小文字のゆらぎを吸収する。"""
     return unicodedata.normalize("NFKC", text or "").lower()
@@ -230,7 +261,7 @@ def weighted_terms(
 
 def split_query(question: str) -> list[str]:
     """質問文を、検索語として使えるかたまりに分ける（元の質問側）。"""
-    normalized = normalize(question)
+    normalized = normalize(strip_framing(question))
     parts = [p for p in _NON_WORD.split(normalized) if p]
     # 質問文全体も1つの語として入れておく（長い一致に強くするため）
     return parts or [normalized]
