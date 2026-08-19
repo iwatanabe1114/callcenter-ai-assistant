@@ -1,0 +1,60 @@
+{
+  "genre": "price",
+  "fetched_at": "2026-08-17T05:00:00+09:00",
+  "count": 4,
+  "note": "サンプルデータ（設定前でも動作確認できるようにしたもの）",
+  "docs": [
+    {
+      "id": "price-2",
+      "genre": "price",
+      "title": "スタンダード定期便",
+      "body": "金額: 月額4,980円（税込）\n備考: 初回のみ2,490円。3回以上の継続が条件",
+      "row": 2,
+      "source_label": "料金／サンプル 2行目",
+      "source_url": "",
+      "tenant_id": "default",
+      "meta": {
+        "sample": true
+      }
+    },
+    {
+      "id": "price-3",
+      "genre": "price",
+      "title": "プレミアム定期便",
+      "body": "金額: 月額7,980円（税込）\n備考: 回数縛りなし。いつでも解約可能",
+      "row": 3,
+      "source_label": "料金／サンプル 3行目",
+      "source_url": "",
+      "tenant_id": "default",
+      "meta": {
+        "sample": true
+      }
+    },
+    {
+      "id": "price-4",
+      "genre": "price",
+      "title": "単品購入",
+      "body": "金額: 5,980円（税込）\n備考: 送料650円が別途必要。5,000円以上で送料無料キャンペーン対象",
+      "row": 4,
+      "source_label": "料金／サンプル 4行目",
+      "source_url": "",
+      "tenant_id": "default",
+      "meta": {
+        "sample": true
+      }
+    },
+    {
+      "id": "price-5",
+      "genre": "price",
+      "title": "送料",
+      "body": "金額: 全国一律650円（税込）\n備考: 沖縄・離島は別途中継料1,200円",
+      "row": 5,
+      "source_label": "料金／サンプル 5行目",
+      "source_url": "",
+      "tenant_id": "default",
+      "meta": {
+        "sample": true
+      }
+    }
+  ]
+}

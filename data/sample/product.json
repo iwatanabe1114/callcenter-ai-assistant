@@ -1,0 +1,47 @@
+{
+  "genre": "product",
+  "fetched_at": "2026-08-17T05:00:00+09:00",
+  "count": 3,
+  "note": "サンプルデータ（設定前でも動作確認できるようにしたもの）",
+  "docs": [
+    {
+      "id": "product-2",
+      "genre": "product",
+      "title": "グリーンサプリ 90粒",
+      "body": "説明: 1日3粒目安の栄養補助食品。1袋で約30日分です。妊娠中・授乳中の方は医師にご相談のうえお召し上がりください。\n型番: GS-090",
+      "row": 2,
+      "source_label": "商品／サンプル 2行目",
+      "source_url": "",
+      "tenant_id": "default",
+      "meta": {
+        "sample": true
+      }
+    },
+    {
+      "id": "product-3",
+      "genre": "product",
+      "title": "グリーンサプリ 180粒",
+      "body": "説明: 大容量タイプ。1袋で約60日分です。開封後は高温多湿を避けて保存してください。\n型番: GS-180",
+      "row": 3,
+      "source_label": "商品／サンプル 3行目",
+      "source_url": "",
+      "tenant_id": "default",
+      "meta": {
+        "sample": true
+      }
+    },
+    {
+      "id": "product-4",
+      "genre": "product",
+      "title": "モイストクリーム 50g",
+      "body": "説明: 全身に使える保湿クリーム。無香料・無着色。パッチテスト済み（すべての方に肌トラブルが起きないわけではありません）。\n型番: MC-050",
+      "row": 4,
+      "source_label": "商品／サンプル 4行目",
+      "source_url": "",
+      "tenant_id": "default",
+      "meta": {
+        "sample": true
+      }
+    }
+  ]
+}

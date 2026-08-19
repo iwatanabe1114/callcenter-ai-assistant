@@ -1,0 +1,25 @@
+# 5.3 秘密情報・お客様データはコード管理に含めない
+.streamlit/secrets.toml
+*service_account*.json
+*credentials*.json
+.env
+
+# 元データそのもの。スプレッドシートをExcelで書き出したファイルには
+# メール配信リストなど、読み込み対象外のシートも丸ごと含まれる
+data/source/*
+!data/source/.gitkeep
+*.xlsx
+*.xls
+
+# キャッシュ（元データのコピー＝お客様データを含みうる）
+data/cache/*
+!data/cache/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store

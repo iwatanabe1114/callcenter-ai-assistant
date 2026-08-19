@@ -1,0 +1,205 @@
+# ============================================================
+# 実際のスプレッドシート「テスト」用の取得設定
+#   ファイルID: 1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw
+#
+# この中身を .streamlit/secrets.toml の末尾に貼り付けてください。
+#
+# 読み込まないシート（意図的に設定していません）:
+#   メール配信リスト       … お客様のメールアドレス
+#   カルテ項目            … 家族構成・お仕事などの個人情報テンプレート
+#   IDPASS（クレカ）     … 現在は中身が空のため対象外
+#
+# ⚠️ サービスアカウントには「ファイル単位」で権限が付きます。
+#    ここで設定しなかったシートもサービスアカウントからは読める状態になるので、
+#    将来 IDPASS（クレカ）に実際の認証情報を入れる場合は、
+#    そのときに別ファイルへ移してください。
+# ============================================================
+
+
+# ── マニュアル ────────────────────────────────────────────
+
+# 回覧板：228件。社内の共有事項が一番たまっている場所
+[[sources]]
+genre = "manual"
+name = "回覧板"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "回覧板"
+columns = ["No", "共有日", "カテゴリ", "対象", "タイトル", "実施日", "内容"]
+title_columns = ["タイトル"]
+body_columns = ["カテゴリ", "対象", "内容", "実施日", "共有日"]
+# 共有日から半年（180日）を過ぎたものは取り込まない。
+# 古い緊急連絡が「現在のルール」として回答されるのを防ぐため。
+# ※日付が空・読み取れない行は除外しません（消しすぎないため）
+date_column = "共有日"
+max_age_days = 180
+
+# PBX音声ガイダンス：8件
+[[sources]]
+genre = "manual"
+name = "PBX音声ガイダンス"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "PBX音声ガイダンス"
+columns = ["運用開始日", "終了日", "配信タイミング", "音声ガイダンス", "SMS", "URL"]
+title_columns = ["配信タイミング"]
+body_columns = ["音声ガイダンス", "SMS", "URL", "運用開始日", "終了日"]
+
+
+# ── キャンペーン・施策 ────────────────────────────────────
+
+# 施策シートリンク：56件
+[[sources]]
+genre = "campaign"
+name = "施策一覧"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "施策シートリンク"
+columns = [
+  "対象ユーザー", "カテゴリ", "キャンペーン名", "稼働状況", "開始日", "終了日",
+  "対象商品①", "対象商品②", "対象商品③", "対象商品④", "対象商品⑤",
+]
+title_columns = ["キャンペーン名"]
+body_columns = [
+  "稼働状況", "対象ユーザー", "カテゴリ", "開始日", "終了日",
+  "対象商品①", "対象商品②", "対象商品③", "対象商品④", "対象商品⑤",
+]
+# 終了して半年たった施策は取り込まない
+date_column = "終了日"
+max_age_days = 180
+
+# 新規ポイントスケジュール：17件
+[[sources]]
+genre = "campaign"
+name = "ポイント付与スケジュール"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "新規ポイントスケジュール(全商材)"
+columns = ["開始日", "終了日", "CP名", "付与pt数"]
+title_columns = ["CP名"]
+body_columns = ["付与pt数", "開始日", "終了日"]
+date_column = "終了日"
+max_age_days = 180
+
+
+# ── 料金 ──────────────────────────────────────────────────
+
+# 全商材価格表：24件
+# 1行目の列名に「金額(クレカ)」「配送方法」が3回ずつ出てくるので、
+# 列名ではなく「列の位置」で指定し、column_labels で表示名を付けます。
+# A列（商材名）はセル結合で空の行があるため、fill_down_columns で上の値を引き継ぎます。
+[[sources]]
+genre = "price"
+name = "全商材価格表"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "全商材価格表"
+columns = ["A", "B", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
+title_columns = ["A", "B"]
+body_columns = ["E", "F", "G", "H", "I", "J", "K", "L", "M"]
+fill_down_columns = ["A"]
+
+[sources.column_labels]
+A = "商材"
+B = "コース名"
+E = "初回 金額(クレカ)"
+F = "初回 金額(後払い)"
+G = "初回 配送方法"
+H = "2回目 金額(クレカ)"
+I = "2回目 金額(後払い)"
+J = "2回目 配送方法"
+K = "3回目 金額(クレカ)"
+L = "3回目 金額(後払い)"
+M = "3回目 配送方法"
+
+
+# ── 商品（8商材） ─────────────────────────────────────────
+#
+# 商材シートは「A列に項目名・その右の列に内容」という縦持ちです。
+# 内容がB列の商材とC列の商材が混在しているため、value_columns を
+# ["B","C","D"] にして、左から見て最初に値がある列を採用します。
+# 1行が1件の資料になります（例：「爽軽青汁／全成分」）。
+
+[[sources]]
+genre = "product"
+name = "爽軽青汁"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "爽軽青汁"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+# 1行目はバナー（見出し・リンク）なので読み飛ばす
+start_row = 2
+
+[[sources]]
+genre = "product"
+name = "メグレアpremium"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "メグレアpremium"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+start_row = 2
+
+[[sources]]
+genre = "product"
+name = "メグレアlight"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "メグレアlight"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+start_row = 2
+
+[[sources]]
+genre = "product"
+name = "糖貫プロネス"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "糖貫プロネス"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+start_row = 2
+
+[[sources]]
+genre = "product"
+name = "肝匠プロネス"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "肝匠プロネス"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+start_row = 2
+
+[[sources]]
+genre = "product"
+name = "アイゼン"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "アイゼン"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+start_row = 2
+
+[[sources]]
+genre = "product"
+name = "アユミルpremium"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "アユミルpremium"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+start_row = 2
+
+[[sources]]
+genre = "product"
+name = "はつらつコラーゲン"
+spreadsheet_id = "1rKl3y3zViOiavfoFsC_T2D4_MG9tukn5vfRx-DMXESw"
+worksheet = "はつらつコラーゲン(クロス用)"
+layout = "key_value"
+key_column = "A"
+value_columns = ["B", "C", "D"]
+skip_keys = ["商品画像", "実物画像", "同梱物"]
+start_row = 2

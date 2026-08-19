@@ -1,0 +1,7 @@
+streamlit>=1.40
+anthropic>=0.70
+gspread>=6.1
+google-auth>=2.30
+
+# 認証なしでの動作確認用（Excel書き出しを読み込む）
+openpyxl>=3.1
