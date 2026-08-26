@@ -267,22 +267,35 @@ def load_config() -> AppConfig:
     allowed = _as_list(secret("tenant.allowed_ids")) or [tenant_id]
 
     # サービスアカウント情報を取得（Streamlit Cloud / ローカル両対応）
+    # デバッグ: Secretsの中身をログに出力して原因を特定する
+    import logging
+    _log = logging.getLogger(__name__)
+
     sa_info: dict[str, Any] | None = None
     try:
         import streamlit as st
-        if hasattr(st, "secrets") and "gcp_service_account" in st.secrets:
-            sa_info = dict(st.secrets["gcp_service_account"])
-    except Exception:
-        pass
+        _log.warning(f"[SA DEBUG] st.secrets keys: {list(st.secrets)}")
+        _log.warning(f"[SA DEBUG] 'gcp_service_account' in secrets: {'gcp_service_account' in st.secrets}")
+        if "gcp_service_account" in st.secrets:
+            raw = st.secrets["gcp_service_account"]
+            _log.warning(f"[SA DEBUG] type: {type(raw)}, keys: {list(raw) if hasattr(raw, '__iter__') else 'N/A'}")
+            sa_info = dict(raw)
+            _log.warning(f"[SA DEBUG] client_email: {sa_info.get('client_email', 'MISSING')}")
+            _log.warning(f"[SA DEBUG] private_key exists: {bool(sa_info.get('private_key'))}")
+    except Exception as e:
+        _log.warning(f"[SA DEBUG] Exception: {e}")
     if sa_info is None:
         sa = secret("gcp_service_account")
+        _log.warning(f"[SA DEBUG] fallback secret(): {type(sa)}, truthy: {bool(sa)}")
         if sa:
             try:
                 sa_info = dict(sa) if hasattr(sa, "keys") else None
             except Exception:
                 sa_info = None
     if sa_info and (not sa_info.get("client_email") or not sa_info.get("private_key")):
+        _log.warning("[SA DEBUG] client_email or private_key missing, setting sa_info to None")
         sa_info = None
+    _log.warning(f"[SA DEBUG] final has_sheets: {bool(sa_info)}")
 
     return AppConfig(
         anthropic_api_key=str(secret("anthropic_api_key", os.environ.get("ANTHROPIC_API_KEY", "")) or ""),
