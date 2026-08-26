@@ -12,6 +12,7 @@ import streamlit as st
 from core import cache_store, ui, usage_log
 from core.auth import LEVEL_ADMIN, logout_button, require_login
 from core.config import GENRES, get_config
+from core.incident import load_from_gspread, load_from_xlsx, save_cache as save_incident_cache
 from core.masking import find_leaks
 from core.retrieval import clear_index, index_stats
 from core.sources import sheets
@@ -28,8 +29,8 @@ if not require_login(LEVEL_ADMIN):
 logout_button(LEVEL_ADMIN)
 ui.sidebar_footer(config)
 
-tab_data, tab_usage, tab_privacy, tab_config = st.tabs(
-    ["資料の状態", "利用状況", "個人情報の点検", "設定の確認"]
+tab_data, tab_incident, tab_usage, tab_privacy, tab_config = st.tabs(
+    ["資料の状態", "インシデント", "利用状況", "個人情報の点検", "設定の確認"]
 )
 
 # ── 資料の状態・再取得 ───────────────────────────────────
@@ -84,6 +85,75 @@ with tab_data:
         clear_index()
         st.success("次の検索で索引が作り直されます。")
     st.json(index_stats(list(GENRES)))
+
+# ── インシデントテンプレート ──────────────────────────────
+with tab_incident:
+    st.subheader("インシデントテンプレートの取得")
+
+    incident_worksheet = st.text_input(
+        "シート名",
+        value="インシデントテンプレ （202411~）",
+        help="スプレッドシート内のインシデントテンプレートのシートタブ名",
+    )
+
+    # スプレッドシートIDは既存ソースから取得
+    incident_spreadsheet_id = ""
+    if config.sources:
+        incident_spreadsheet_id = config.sources[0].spreadsheet_id
+
+    col_gs, col_xl = st.columns(2)
+
+    with col_gs:
+        st.caption("スプレッドシートから取得（サービスアカウントが必要）")
+        gs_disabled = not config.has_sheets or not incident_spreadsheet_id
+        if st.button("スプレッドシートから取得", disabled=gs_disabled, type="primary"):
+            with st.spinner("取得中…"):
+                try:
+                    tmpls = load_from_gspread(
+                        config.service_account_info,
+                        incident_spreadsheet_id,
+                        incident_worksheet,
+                    )
+                    if tmpls:
+                        save_incident_cache(tmpls)
+                        st.success(f"{len(tmpls)}件のテンプレートを取得しました。")
+                    else:
+                        st.warning("テンプレートが見つかりませんでした。シート名を確認してください。")
+                except Exception as exc:
+                    st.error(f"取得に失敗しました: {exc}")
+        if gs_disabled:
+            st.caption("サービスアカウントが未設定です。")
+
+    with col_xl:
+        st.caption("Excelファイルから取得（動作確認用）")
+        uploaded = st.file_uploader("xlsx ファイル", type=["xlsx"], key="incident_xlsx")
+        if uploaded is not None:
+            import tempfile
+            from pathlib import Path
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+                f.write(uploaded.read())
+                tmp_path = Path(f.name)
+            try:
+                tmpls = load_from_xlsx(tmp_path, incident_worksheet)
+                if tmpls:
+                    save_incident_cache(tmpls)
+                    st.success(f"{len(tmpls)}件のテンプレートを取得しました。")
+                else:
+                    st.warning("テンプレートが見つかりませんでした。シート名を確認してください。")
+            except Exception as exc:
+                st.error(f"読み込みに失敗しました: {exc}")
+            finally:
+                tmp_path.unlink(missing_ok=True)
+
+    # 現在のキャッシュ状況
+    st.divider()
+    from core.incident import load_cache as load_incident_cache, get_categories
+    cached = load_incident_cache()
+    if cached:
+        cats = get_categories(cached)
+        st.success(f"キャッシュ済み: {len(cached)}件（{', '.join(cats)}）")
+    else:
+        st.info("まだ取得されていません。")
 
 # ── 利用状況 ─────────────────────────────────────────────
 with tab_usage:
