@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コールセンターAIアシスタント - 仕組みの説明</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    line-height: 1.8;
+    padding: 40px 20px;
+  }
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 24px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 40px;
+  }
+
+  /* フロー全体 */
+  .flow {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* 各ステップ */
+  .step {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .step + .arrow {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+  }
+  .arrow svg {
+    width: 32px;
+    height: 32px;
+    fill: #4285f4;
+  }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  .step-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .step-title {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .step-body {
+    font-size: 14px;
+    color: #555;
+    padding-left: 42px;
+  }
+  .step-body p { margin-bottom: 8px; }
+  .step-body .example {
+    background: #f0f4ff;
+    border-left: 3px solid #4285f4;
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+  .step-body .warn {
+    background: #fff8e1;
+    border-left: 3px solid #ffc107;
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+  .step-body ul {
+    padding-left: 20px;
+    margin: 6px 0;
+  }
+  .step-body li { margin-bottom: 4px; }
+
+  /* ステップの色分け */
+  .color-input .step-number { background: #4285f4; }
+  .color-input { border-top: 3px solid #4285f4; }
+
+  .color-expand .step-number { background: #34a853; }
+  .color-expand { border-top: 3px solid #34a853; }
+
+  .color-search .step-number { background: #fbbc04; }
+  .color-search { border-top: 3px solid #fbbc04; }
+
+  .color-ai .step-number { background: #ea4335; }
+  .color-ai { border-top: 3px solid #ea4335; }
+
+  .color-output .step-number { background: #9c27b0; }
+  .color-output { border-top: 3px solid #9c27b0; }
+
+  /* 品質向上セクション */
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #4285f4;
+  }
+  .tip-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 12px;
+  }
+  .tip-card h3 {
+    font-size: 15px;
+    margin-bottom: 8px;
+    color: #4285f4;
+  }
+  .tip-card p {
+    font-size: 14px;
+    color: #555;
+  }
+
+  /* 全体像の図 */
+  .overview {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 32px;
+    text-align: center;
+  }
+  .overview-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+  }
+  .overview-box {
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    min-width: 120px;
+  }
+  .overview-arrow {
+    font-size: 24px;
+    color: #ccc;
+  }
+  .bg-blue { background: #4285f4; }
+  .bg-green { background: #34a853; }
+  .bg-yellow { background: #f9a825; color: #333; }
+  .bg-red { background: #ea4335; }
+  .bg-purple { background: #9c27b0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>コールセンターAIアシスタントの仕組み</h1>
+  <p class="subtitle">質問から回答までの5つのステップ</p>
+
+  <!-- 全体像 -->
+  <div class="overview">
+    <div class="overview-diagram">
+      <div class="overview-box bg-blue">質問を入力</div>
+      <span class="overview-arrow">→</span>
+      <div class="overview-box bg-green">言葉を広げる</div>
+      <span class="overview-arrow">→</span>
+      <div class="overview-box bg-yellow">資料を検索</div>
+      <span class="overview-arrow">→</span>
+      <div class="overview-box bg-red">AIが回答作成</div>
+      <span class="overview-arrow">→</span>
+      <div class="overview-box bg-purple">結果を表示</div>
+    </div>
+    <p style="font-size:13px; color:#888;">質問してから回答が出るまで、この5つの処理が自動で行われます</p>
+  </div>
+
+  <!-- ステップ1 -->
+  <div class="flow">
+
+    <div class="step color-input">
+      <div class="step-header">
+        <span class="step-number">1</span>
+        <span class="step-title">OPが質問を入力する</span>
+      </div>
+      <div class="step-body">
+        <p>オペレーターがチャット欄に質問を入力します。話し言葉でOKです。</p>
+        <div class="example">
+          <strong>入力例：</strong>「定期便を2回で解約したいと言われました。どうすればいいですか？」
+        </div>
+        <p>アプリはまず、質問文から「言い回し」を取り除きます。</p>
+        <ul>
+          <li>「と言われました」「どうすればいいですか」などの定型フレーズを除去</li>
+          <li>検索に関係のない部分を落として、検索精度を上げるため</li>
+        </ul>
+        <div class="example">
+          <strong>処理後：</strong>「定期便を2回で解約」→ これが検索キーワードになる
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></div>
+
+    <!-- ステップ2 -->
+    <div class="step color-expand">
+      <div class="step-header">
+        <span class="step-number">2</span>
+        <span class="step-title">AIが検索キーワードを広げる（クエリ拡張）</span>
+      </div>
+      <div class="step-body">
+        <p>質問の言葉だけだと、マニュアル側の表現と微妙に違って見つからないことがあります。<br>
+        そこで軽量AI（Claude Haiku）が、同じ意味の別の言い方を自動で追加します。</p>
+        <div class="example">
+          <strong>例：</strong>質問に「返品」と書いてあった場合<br>
+          → AIが「返送」「キャンセル」「返金」などの関連語を追加
+        </div>
+        <p>ただし、追加された言葉は元の質問より<strong>低い重要度</strong>で扱います。<br>
+        「対応」「手続き」のような一般的すぎる語は自動的に除外されます。</p>
+        <div class="warn">
+          <strong>なぜ重要度を分けるのか：</strong>追加した言葉を同じ重さで扱うと、
+          関係のない資料まで大量にヒットして、かえって精度が落ちるため。
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></div>
+
+    <!-- ステップ3 -->
+    <div class="step color-search">
+      <div class="step-header">
+        <span class="step-number">3</span>
+        <span class="step-title">キーワードでマニュアル・資料を検索する</span>
+      </div>
+      <div class="step-body">
+        <p>ステップ2で作ったキーワードをもとに、4種類の資料を横断検索します。</p>
+        <ul>
+          <li><strong>キャンペーン・施策</strong>（優先度：高）</li>
+          <li><strong>マニュアル・回覧板</strong>（優先度：やや高）</li>
+          <li><strong>料金表</strong>（優先度：標準）</li>
+          <li><strong>商品情報</strong>（優先度：やや低）</li>
+        </ul>
+        <p>検索方式は<strong>BM25（キーワード検索）</strong>です。日本語は2文字ずつの組み合わせ（bi-gram）で一致を調べます。</p>
+        <p>検索結果は<strong>一致度のスコア順</strong>に並び、上位6件（設定で変更可）をAIに渡します。</p>
+        <div class="warn">
+          <strong>ポイント：</strong>キャンペーン情報は最新で重要なことが多いため、
+          同じスコアならキャンペーンが上に来るよう優先度を付けています。
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></div>
+
+    <!-- ステップ4 -->
+    <div class="step color-ai">
+      <div class="step-header">
+        <span class="step-number">4</span>
+        <span class="step-title">AIが資料をもとに回答を作成する</span>
+      </div>
+      <div class="step-body">
+        <p>検索で見つかった資料をAI（Claude Sonnet）に渡して、回答文を作成させます。</p>
+        <p>AIへの指示（守らせているルール）：</p>
+        <ul>
+          <li>渡された資料の中身だけを根拠に答える。<strong>資料にないことは絶対に書かない</strong></li>
+          <li>回答は<strong>「結論」（1〜2文）</strong>と<strong>「条件・詳細」</strong>に分ける</li>
+          <li>金額や日数は資料の数字をそのまま引用する。計算・丸め・推測はしない</li>
+          <li>資料に答えがない場合は「見つかりませんでした」と正直に返す</li>
+          <li>本社確認が必要な場合はその旨を注意として表示する</li>
+        </ul>
+        <div class="example">
+          <strong>AIが作る回答の構成：</strong><br>
+          ・<strong>結論：</strong>「定期便の解約は次回発送予定日の10日前まで受け付けます。」<br>
+          ・<strong>条件・詳細：</strong>「回数縛りのあるコースは、規定回数の受け取りが完了しているか確認してください…」<br>
+          ・<strong>注意：</strong>「差額が発生する場合があります。」
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></div>
+
+    <!-- ステップ5 -->
+    <div class="step color-output">
+      <div class="step-header">
+        <span class="step-number">5</span>
+        <span class="step-title">結果を画面に表示する</span>
+      </div>
+      <div class="step-body">
+        <p>OPの画面に以下の3つが表示されます：</p>
+        <ul>
+          <li><strong>結論</strong> ー 大きく表示。これだけ読めばお客様に伝えられる</li>
+          <li><strong>条件・詳細</strong> ー 必要に応じて開いて確認する部分</li>
+          <li><strong>参考にした資料</strong> ー 元のマニュアルへのリンク。「本当にそう書いてあるか」自分の目で確認できる</li>
+        </ul>
+        <div class="warn">
+          <strong>重要：</strong>参照元の資料リンクはAIが作ったものではなく、
+          検索結果からプログラムが機械的に表示しています。AIの作文ミスを防ぐためです。
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 回答品質を上げるには -->
+  <h2 class="section-title">回答品質を上げるには</h2>
+
+  <div class="tip-card">
+    <h3>1. マニュアルの内容を充実させる</h3>
+    <p>AIは渡された資料の中身だけを根拠にします。マニュアルに書かれていないことは回答できません。
+    「答えが見つかりませんでした」が多い質問は、対応するマニュアルの追加が効果的です。
+    管理画面の「答えが見つからなかった質問」一覧を参考にしてください。</p>
+  </div>
+
+  <div class="tip-card">
+    <h3>2. マニュアルの表現を統一する</h3>
+    <p>同じことを「解約」「退会」「停止」とバラバラに書いていると、検索で見つかりにくくなります。
+    よく使う言葉をマニュアル内で統一すると精度が上がります。</p>
+  </div>
+
+  <div class="tip-card">
+    <h3>3. 質問の仕方を工夫する</h3>
+    <p>具体的なキーワードを含む質問のほうが精度が高くなります。</p>
+    <p style="margin-top:6px;">
+      <span style="color:#ea4335;">&#10007;</span> 「どうしたらいいですか？」<br>
+      <span style="color:#34a853;">&#10003;</span> 「メグレアの定期便を初回で解約したい場合の手順は？」
+    </p>
+  </div>
+
+  <div class="tip-card">
+    <h3>4. 検索対象のジャンルを絞る</h3>
+    <p>サイドバーの「探す資料の種類」で、必要なジャンルだけに絞ると、
+    関係のない資料にヒットしにくくなり精度が上がります。</p>
+  </div>
+
+  <div class="tip-card">
+    <h3>5. 古い情報を定期的に整理する</h3>
+    <p>終了したキャンペーンや古い回覧板が残っていると、それが回答に使われることがあります。
+    現在は180日を超えた情報は自動的に除外されますが、それより前でも不要な情報は整理すると効果的です。</p>
+  </div>
+
+</div>
+
+</body>
+</html>
