@@ -270,8 +270,14 @@ def load_config() -> AppConfig:
     sa_info: dict[str, Any] | None = None
     if sa:
         try:
-            sa_info = dict(sa)
-            if not sa_info.get("client_email") or not sa_info.get("private_key"):
+            # AttrDict等の場合はto_dict()で変換
+            if hasattr(sa, "to_dict"):
+                sa_info = sa.to_dict()
+            elif hasattr(sa, "keys"):
+                sa_info = dict(sa)
+            else:
+                sa_info = None
+            if sa_info and (not sa_info.get("client_email") or not sa_info.get("private_key")):
                 sa_info = None
         except Exception:
             sa_info = None
