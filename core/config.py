@@ -266,21 +266,23 @@ def load_config() -> AppConfig:
     tenant_id = str(secret("tenant.id", "default"))
     allowed = _as_list(secret("tenant.allowed_ids")) or [tenant_id]
 
-    sa = secret("gcp_service_account")
+    # サービスアカウント情報を取得（Streamlit Cloud / ローカル両対応）
     sa_info: dict[str, Any] | None = None
-    if sa:
-        try:
-            # AttrDict等の場合はto_dict()で変換
-            if hasattr(sa, "to_dict"):
-                sa_info = sa.to_dict()
-            elif hasattr(sa, "keys"):
-                sa_info = dict(sa)
-            else:
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and "gcp_service_account" in st.secrets:
+            sa_info = dict(st.secrets["gcp_service_account"])
+    except Exception:
+        pass
+    if sa_info is None:
+        sa = secret("gcp_service_account")
+        if sa:
+            try:
+                sa_info = dict(sa) if hasattr(sa, "keys") else None
+            except Exception:
                 sa_info = None
-            if sa_info and (not sa_info.get("client_email") or not sa_info.get("private_key")):
-                sa_info = None
-        except Exception:
-            sa_info = None
+    if sa_info and (not sa_info.get("client_email") or not sa_info.get("private_key")):
+        sa_info = None
 
     return AppConfig(
         anthropic_api_key=str(secret("anthropic_api_key", os.environ.get("ANTHROPIC_API_KEY", "")) or ""),
