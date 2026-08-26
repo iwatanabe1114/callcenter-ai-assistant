@@ -60,7 +60,19 @@ def _raw_secrets() -> dict[str, Any]:
     try:
         import streamlit as st
 
-        return {k: st.secrets[k] for k in st.secrets}  # type: ignore[union-attr]
+        if hasattr(st, "secrets") and len(st.secrets) > 0:
+            result: dict[str, Any] = {}
+            for k in st.secrets:
+                v = st.secrets[k]
+                # AttrDict等のネストされたオブジェクトをdictに変換
+                if hasattr(v, "to_dict"):
+                    result[k] = v.to_dict()
+                elif hasattr(v, "keys"):
+                    result[k] = dict(v)
+                else:
+                    result[k] = v
+            return result
+        return _load_toml()
     except Exception:
         return _load_toml()
 
