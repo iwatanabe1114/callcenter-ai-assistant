@@ -9,14 +9,37 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core import llm, ui, usage_log
+from core import cache_store, llm, ui, usage_log
 from core.auth import LEVEL_CHAT, logout_button, require_login
 from core.config import CHAT_GENRES, GENRES, get_config
-from core.retrieval import retrieve
+from core.retrieval import clear_index, retrieve
 
 ui.page_setup("コールセンターAIアシスタント")
 
 config = get_config()
+
+
+# ── 起動時にスプレッドシートから自動取得（1回だけ） ──────────
+@st.cache_resource(show_spinner=False)
+def _auto_ingest():
+    """アプリ起動時にスプレッドシートから最新データを取得する。"""
+    if not config.has_sheets:
+        return False
+    try:
+        from core.sources import sheets
+        results = sheets.fetch_all(config, config.configured_genres)
+        for genre in config.configured_genres:
+            item = results.get(genre, {})
+            if item.get("error"):
+                continue
+            cache_store.write_genre(genre, item["docs"], note=item.get("note", ""))
+        clear_index()
+        return True
+    except Exception:
+        return False
+
+
+_auto_ingest()
 
 st.title("☎️ コールセンターAIアシスタント")
 st.caption("質問を入力すると、社内の資料から関係する情報を探して答えます。")
