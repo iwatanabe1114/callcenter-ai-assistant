@@ -27,7 +27,6 @@ from datetime import date, datetime, timedelta
 from typing import Any, Iterable
 
 from ..config import AppConfig, SourceConfig
-from ..masking import mask_text
 
 
 class SheetsError(RuntimeError):
@@ -200,8 +199,8 @@ def _make_doc(
         "id": f"{source.genre}-{source.slug}-{row_number}",
         "genre": source.genre,
         "source_name": source.label,
-        "title": mask_text(title),
-        "body": mask_text(body),
+        "title": title,
+        "body": body,
         "row": row_number,
         # 8.3 対策②：参照元はAIに書かせず、検索結果側に情報として持たせておく
         "source_label": f"{source.label}／{source.worksheet} {row_number}行目",
