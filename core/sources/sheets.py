@@ -210,6 +210,100 @@ def _make_doc(
     }
 
 
+# ── チャンキング（長いテキストを意味のあるまとまりで分割） ──
+
+# この文字数を超えたドキュメントを分割対象にする
+_CHUNK_THRESHOLD = 400
+
+# 分割後の1チャンクの最大文字数（目安）
+_CHUNK_MAX = 400
+
+# 見出しパターン（これらで区切る）
+_HEADING_RE = re.compile(
+    r"(?:^|\n)"
+    r"(?:"
+    r"[■▼▲●◆★☆【〈＜]"  # 見出し記号で始まる行
+    r"|(?:━|─|ー{3,}|={3,}|-{3,})"  # 区切り線
+    r"|(?:\d+[\.\)）])"  # 番号付き見出し（1. 2） など）
+    r")"
+)
+
+
+def _chunk_doc(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    """長いドキュメントを見出し区切りで分割する。
+
+    短いドキュメントはそのまま1件で返す。
+    見出しが見つからない場合も分割しない。
+    """
+    body = doc.get("body", "")
+    if len(body) <= _CHUNK_THRESHOLD:
+        return [doc]
+
+    # 見出し位置で分割
+    splits = list(_HEADING_RE.finditer(body))
+    if not splits:
+        return [doc]
+
+    # 分割位置のリスト
+    positions = [0]
+    for m in splits:
+        pos = m.start()
+        # 改行の直後から始まる場合は改行位置を使う
+        if pos > 0 and body[pos] == "\n":
+            pos += 1
+        if pos > 0 and pos not in positions:
+            positions.append(pos)
+    positions.append(len(body))
+
+    # チャンクを作成
+    chunks: list[dict[str, Any]] = []
+    base_title = doc.get("title", "")
+    current_text = ""
+
+    for i in range(len(positions) - 1):
+        segment = body[positions[i]:positions[i + 1]].strip()
+        if not segment:
+            continue
+
+        # 短いセグメントは結合する
+        if current_text and len(current_text) + len(segment) <= _CHUNK_MAX:
+            current_text += "\n" + segment
+            continue
+
+        # 前のチャンクを確定
+        if current_text:
+            chunk_title = _extract_chunk_title(current_text, base_title)
+            chunk = dict(doc)
+            chunk["id"] = f"{doc['id']}-c{len(chunks)}"
+            chunk["title"] = chunk_title
+            chunk["body"] = current_text
+            chunks.append(chunk)
+
+        current_text = segment
+
+    # 最後のチャンク
+    if current_text:
+        chunk_title = _extract_chunk_title(current_text, base_title)
+        chunk = dict(doc)
+        chunk["id"] = f"{doc['id']}-c{len(chunks)}"
+        chunk["title"] = chunk_title
+        chunk["body"] = current_text
+        chunks.append(chunk)
+
+    return chunks if chunks else [doc]
+
+
+def _extract_chunk_title(text: str, base_title: str) -> str:
+    """チャンクの先頭行から見出しを抽出してタイトルに使う。"""
+    first_line = text.split("\n")[0].strip()
+    # 見出し記号を除去して短いタイトルにする
+    cleaned = re.sub(r"^[■▼▲●◆★☆【〈＜\d\.\)）\s]+", "", first_line)
+    cleaned = re.sub(r"[】〉＞]\s*$", "", cleaned)
+    if cleaned and len(cleaned) <= 50:
+        return f"{base_title}／{cleaned}"
+    return base_title
+
+
 # ── layout = "table" ──────────────────────────────────────
 def _read_table(
     source: SourceConfig,
@@ -304,16 +398,15 @@ def _read_table(
         if not body_lines:
             continue
 
-        docs.append(
-            _make_doc(
-                source=source,
-                row_number=row_number,
-                title=title,
-                body="\n".join(body_lines),
-                tenant_id=row_tenant,
-                gid=gid,
-            )
+        doc = _make_doc(
+            source=source,
+            row_number=row_number,
+            title=title,
+            body="\n".join(body_lines),
+            tenant_id=row_tenant,
+            gid=gid,
         )
+        docs.extend(_chunk_doc(doc))
 
     if skipped_old:
         notes.append(f"{source.max_age_days}日より古い行を{skipped_old}件除外")
@@ -363,16 +456,15 @@ def _read_key_value(
             empty_keys += 1
             continue
 
-        docs.append(
-            _make_doc(
-                source=source,
-                row_number=row_number,
-                title=f"{source.label}／{key}",
-                body=f"商品: {source.label}\n{key}: {value}",
-                tenant_id=config.tenant_id,
-                gid=gid,
-            )
+        doc = _make_doc(
+            source=source,
+            row_number=row_number,
+            title=f"{source.label}／{key}",
+            body=f"商品: {source.label}\n{key}: {value}",
+            tenant_id=config.tenant_id,
+            gid=gid,
         )
+        docs.extend(_chunk_doc(doc))
 
     notes = [f"内容が空の項目を{empty_keys}件除外"] if empty_keys else []
     return docs, notes
