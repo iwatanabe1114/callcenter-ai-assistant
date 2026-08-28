@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Google Sans', 'Noto Sans JP', Arial, sans-serif;
+    font-size: 13px;
+    color: #333;
+    background: #f8f9fa;
+    overflow-y: auto;
+  }
+
+  /* レイアウト：左右2カラム */
+  .container {
+    display: flex;
+    height: 100vh;
+    gap: 0;
+  }
+  .left-panel {
+    width: 340px;
+    min-width: 340px;
+    background: #fff;
+    border-right: 1px solid #e0e0e0;
+    padding: 16px;
+    overflow-y: auto;
+  }
+  .right-panel {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* 左パネル：入力フォーム */
+  .panel-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a73e8;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #1a73e8;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+  .form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #5f6368;
+    margin-bottom: 3px;
+    letter-spacing: 0.3px;
+  }
+  .form-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .form-select:focus {
+    outline: none;
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+  }
+
+  /* 右パネル：出力 */
+  .output-section {
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .output-section.expand {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 6px 6px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .section-header .copy-btn {
+    font-size: 11px;
+    padding: 3px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.15s;
+    color: #fff;
+  }
+  .section-header .copy-btn:hover { opacity: 0.85; }
+
+  .header-title { background: #e6f4ea; color: #137333; }
+  .header-title .copy-btn { background: #137333; }
+
+  .header-content { background: #e6f4ea; color: #137333; }
+  .header-content .copy-btn { background: #137333; }
+
+  .header-memo { background: #fef7e0; color: #b05a00; }
+  .header-memo .copy-btn { background: #b05a00; }
+
+  .header-karte { background: #f3e8fd; color: #7627bb; }
+  .header-karte .copy-btn { background: #7627bb; }
+
+  .output-box {
+    border: 1px solid #dadce0;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    background: #fff;
+    padding: 0;
+  }
+  .output-box textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 10px;
+    font-size: 12px;
+    font-family: inherit;
+    line-height: 1.6;
+    resize: none;
+    background: transparent;
+  }
+  .output-box textarea.title-area { height: 32px; font-size: 13px; font-weight: 600; }
+  .output-box textarea.content-area { height: 180px; }
+  .output-box textarea.memo-area { height: 60px; }
+  .output-box textarea.karte-area { height: 120px; }
+
+  .output-section.expand .output-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .output-section.expand .output-box textarea {
+    flex: 1;
+  }
+
+  /* ボタンエリア */
+  .btn-area {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e0e0e0;
+  }
+  .btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+  }
+  .btn-generate {
+    background: #1a73e8;
+    color: #fff;
+  }
+  .btn-generate:hover { background: #1557b0; }
+  .btn-reset {
+    background: #f1f3f4;
+    color: #5f6368;
+  }
+  .btn-reset:hover { background: #e0e0e0; }
+
+  /* 付帯情報 */
+  .info-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .info-chip {
+    background: #e8f0fe;
+    color: #1a73e8;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* トースト */
+  .toast {
+    display: none;
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #323232;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .toast.show { display: block; }
+
+  /* ローディング */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: #888;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">読み込み中...</div>
+
+<div id="app" class="container" style="display:none;">
+
+  <!-- 左パネル：入力 -->
+  <div class="left-panel">
+    <div class="panel-title">入力項目</div>
+
+    <div class="form-group">
+      <label class="form-label">商品名</label>
+      <select id="product" class="form-select" onchange="onProductChange()">
+        <option value="">-- 選択 --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">対応カテゴリ</label>
+      <select id="category" class="form-select" onchange="onCategoryChange()">
+        <option value="">-- 選択 --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">テンプレート</label>
+      <select id="template" class="form-select" onchange="onTemplateChange()">
+        <option value="">-- 選択 --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">注文状況</label>
+      <select id="orderStatus" class="form-select">
+        <option value="">-- 選択 --</option>
+        <option>F1</option><option>F2</option><option>F3</option>
+        <option>F4~</option><option>発送前</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">継続応援結果</label>
+      <select id="retentionResult" class="form-select" onchange="onRetentionChange()">
+        <option value="">-- 選択 --</option>
+        <option>通常便成功</option><option>通常便失敗</option><option>通常便未案内</option>
+        <option>回数便成功（未満了）</option><option>回数便失敗（未満了）</option><option>回数便未案内（未満了）</option>
+        <option>回数便成功（満了）</option><option>回数便失敗（満了）</option><option>回数便未案内（満了）</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">解約希望理由</label>
+      <select id="cancelReason" class="form-select" onchange="onRetentionChange()">
+        <option value="">-- 選択 --</option>
+        <option>定期認識なし</option><option>注文認識なし</option><option>変更認識なし</option>
+        <option>お試し</option><option>未開封</option><option>体に合わない</option>
+        <option>味が苦手</option><option>病院通院/薬服用のため</option><option>効果がなかった</option>
+        <option>経済的理由</option><option>余った</option><option>他商品へ切替</option>
+        <option>満足した</option><option>商品未着</option><option>理由不明</option><option>その他</option>
+        <option>※ ドクターストップ</option><option>※ 長期不在</option><option>※ 代理入電</option>
+        <option>※ 処理ミス</option><option>※ 蕁麻疹</option><option>※ 冒頭切電</option>
+        <option>※ 消費者センター発言</option><option>※ カスハラ該当</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="successDetailGroup" style="display:none;">
+      <label class="form-label">継続応援成功内訳</label>
+      <select id="successDetail" class="form-select">
+        <option value="">-- 選択 --</option>
+        <option>変更なし</option><option>サイクル・袋数変更</option><option>スキップ・延長の提案</option>
+        <option>1.500pt利用</option><option>ルール上での阻止</option><option>発送15日前メール</option>
+        <option>新規ポイント利用</option><option>15日分プレゼント</option><option>送料無料</option>
+        <option>コース切替</option><option>ランク制度</option><option>Lightへ切替</option>
+        <option>該当なし</option>
+      </select>
+    </div>
+
+    <!-- 付帯情報 -->
+    <div id="infoRow" class="info-row"></div>
+
+    <!-- ボタン -->
+    <div class="btn-area">
+      <button class="btn btn-generate" onclick="generate()">生成</button>
+      <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+    </div>
+  </div>
+
+  <!-- 右パネル：出力 -->
+  <div class="right-panel">
+
+    <div class="output-section">
+      <div class="section-header header-title">
+        <span>タイトル</span>
+        <button class="copy-btn" onclick="copyField('titleArea')">コピー</button>
+      </div>
+      <div class="output-box">
+        <textarea id="titleArea" class="title-area" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="output-section expand">
+      <div class="section-header header-content">
+        <span>内容</span>
+        <button class="copy-btn" onclick="copyContent()">コピー</button>
+      </div>
+      <div class="output-box">
+        <textarea id="contentArea" class="content-area"></textarea>
+      </div>
+    </div>
+
+    <div class="output-section">
+      <div class="section-header header-memo">
+        <span>内部メモ</span>
+        <button class="copy-btn" onclick="copyField('memoArea')">コピー</button>
+      </div>
+      <div class="output-box">
+        <textarea id="memoArea" class="memo-area" placeholder="対応の詳細や申し送り事項を記入"></textarea>
+      </div>
+    </div>
+
+    <div class="output-section">
+      <div class="section-header header-karte">
+        <span>カルテ</span>
+        <button class="copy-btn" onclick="copyField('karteArea')">コピー</button>
+      </div>
+      <div class="output-box">
+        <textarea id="karteArea" class="karte-area"></textarea>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+var allTemplates = [];
+var rawCategories = [];
+var displayCategories = [];
+var currentProduct = "";
+var currentCategory = "";
+
+// 初期化
+Promise.all([
+  new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(resolve).getTemplates();
+  }),
+  new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(resolve).getProductNames();
+  }),
+  new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(resolve).getKarteTemplate();
+  })
+]).then(function(results) {
+  var tmplResult = results[0];
+  var products = results[1];
+  var karte = results[2];
+
+  allTemplates = tmplResult.templates || [];
+  rawCategories = tmplResult.categories || [];
+  buildDisplayCategories();
+
+  // 商品名
+  var sel = document.getElementById("product");
+  products.forEach(function(name) {
+    var opt = document.createElement("option");
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  });
+
+  // カテゴリ
+  var catSel = document.getElementById("category");
+  displayCategories.forEach(function(cat) {
+    var opt = document.createElement("option");
+    opt.value = cat; opt.textContent = cat;
+    catSel.appendChild(opt);
+  });
+
+  // カルテ
+  document.getElementById("karteArea").value = karte;
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+});
+
+function buildDisplayCategories() {
+  displayCategories = [];
+  rawCategories.forEach(function(cat) {
+    if (cat === "その他") {
+      var seen = [];
+      allTemplates.forEach(function(t) {
+        if (t.category === "その他" && t.voc && seen.indexOf(t.voc) === -1) seen.push(t.voc);
+      });
+      seen.forEach(function(v) { displayCategories.push(v); });
+    } else {
+      displayCategories.push(cat);
+    }
+  });
+}
+
+function onProductChange() {
+  currentProduct = document.getElementById("product").value;
+  if (currentCategory) updateTemplateList();
+}
+
+function onCategoryChange() {
+  currentCategory = document.getElementById("category").value;
+  updateTemplateList();
+}
+
+function getFilteredTemplates() {
+  if (rawCategories.indexOf(currentCategory) >= 0) {
+    return allTemplates.filter(function(t) { return t.category === currentCategory; });
+  } else {
+    return allTemplates.filter(function(t) { return t.category === "その他" && t.voc === currentCategory; });
+  }
+}
+
+function updateTemplateList() {
+  var sel = document.getElementById("template");
+  sel.innerHTML = '<option value="">-- 選択 --</option>';
+  var filtered = getFilteredTemplates();
+  var product = currentProduct || "商品名";
+  var titles = filtered.map(function(t) { return t.title.replace(/商品名/g, product); });
+
+  filtered.forEach(function(t, i) {
+    var opt = document.createElement("option");
+    var displayTitle = titles[i];
+    if (displayTitle.indexOf("初回キャンセル") >= 0) {
+      var dup = titles.filter(function(tt) { return tt === displayTitle; }).length;
+      if (dup > 1) {
+        displayTitle += (t.retentionResult && t.retentionResult.indexOf("回数便") >= 0) ? "（回数便）" : "（通常便）";
+      }
+    }
+    opt.value = i; opt.textContent = displayTitle;
+    sel.appendChild(opt);
+  });
+}
+
+function onTemplateChange() {
+  var idx = parseInt(document.getElementById("template").value, 10);
+  var filtered = getFilteredTemplates();
+  if (isNaN(idx) || idx < 0 || idx >= filtered.length) return;
+  var t = filtered[idx];
+
+  // 付帯情報
+  var infoRow = document.getElementById("infoRow");
+  infoRow.innerHTML = "";
+  if (t.voc) infoRow.innerHTML += '<span class="info-chip">VOC: ' + escapeHtml(t.voc) + '</span>';
+  if (t.retentionResult) infoRow.innerHTML += '<span class="info-chip">継続: ' + escapeHtml(t.retentionResult) + '</span>';
+}
+
+function onRetentionChange() {
+  var ret = document.getElementById("retentionResult").value;
+  var reason = document.getElementById("cancelReason").value;
+  document.getElementById("successDetailGroup").style.display =
+    (ret.indexOf("成功") >= 0 && reason) ? "block" : "none";
+}
+
+function generate() {
+  var product = currentProduct || "";
+  var category = currentCategory || "";
+  var idx = parseInt(document.getElementById("template").value, 10);
+  var filtered = getFilteredTemplates();
+  var orderStatus = document.getElementById("orderStatus").value;
+  var retention = document.getElementById("retentionResult").value;
+  var cancelReason = document.getElementById("cancelReason").value;
+  var successDetail = document.getElementById("successDetail").value;
+
+  // タイトル
+  var title = "";
+  if (!isNaN(idx) && idx >= 0 && idx < filtered.length) {
+    title = filtered[idx].title.replace(/商品名/g, product);
+    var titles = filtered.map(function(t) { return t.title.replace(/商品名/g, product); });
+    if (title.indexOf("初回キャンセル") >= 0) {
+      var dup = titles.filter(function(tt) { return tt === title; }).length;
+      if (dup > 1) {
+        var t = filtered[idx];
+        title += (t.retentionResult && t.retentionResult.indexOf("回数便") >= 0) ? "（回数便）" : "（通常便）";
+      }
+    }
+  }
+  document.getElementById("titleArea").value = title;
+
+  // 内容
+  var lines = [];
+  lines.push("商品名：" + product);
+  lines.push("カテゴリ：" + category);
+  if (orderStatus) lines.push("注文状況：" + orderStatus);
+  if (retention || cancelReason || successDetail) {
+    lines.push("");
+    if (retention) lines.push("継続応援結果：" + retention);
+    if (cancelReason) lines.push("解約希望理由：" + cancelReason);
+    if (successDetail) lines.push("継続応援成功内訳：" + successDetail);
+  }
+  lines.push("");
+
+  if (!isNaN(idx) && idx >= 0 && idx < filtered.length) {
+    var content = filtered[idx].content;
+    content = content.replace(/【〇〇/g, "【" + product);
+    content = content.replace(/【○○/g, "【" + product);
+    lines.push(content);
+  }
+
+  document.getElementById("contentArea").value = lines.join("\n");
+  showToast("生成しました");
+}
+
+function resetAll() {
+  document.getElementById("product").value = "";
+  document.getElementById("category").value = "";
+  document.getElementById("template").innerHTML = '<option value="">-- 選択 --</option>';
+  document.getElementById("orderStatus").value = "";
+  document.getElementById("retentionResult").value = "";
+  document.getElementById("cancelReason").value = "";
+  document.getElementById("successDetail").value = "";
+  document.getElementById("successDetailGroup").style.display = "none";
+  document.getElementById("titleArea").value = "";
+  document.getElementById("contentArea").value = "";
+  document.getElementById("memoArea").value = "";
+  document.getElementById("infoRow").innerHTML = "";
+  currentProduct = "";
+  currentCategory = "";
+  showToast("リセットしました");
+}
+
+function copyField(id) {
+  copyText(document.getElementById(id).value, "コピーしました");
+}
+
+function copyContent() {
+  var content = document.getElementById("contentArea").value;
+  var memo = document.getElementById("memoArea").value.trim();
+  if (memo) content += "\n\n【内部メモ】\n" + memo;
+  copyText(content, "内容をコピーしました");
+}
+
+function copyText(text, message) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() { showToast(message); })
+      .catch(function() { fallbackCopy(text, message); });
+  } else {
+    fallbackCopy(text, message);
+  }
+}
+
+function fallbackCopy(text, message) {
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.left = "-9999px";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); showToast(message); }
+  catch(e) { showToast("コピーに失敗しました"); }
+  document.body.removeChild(ta);
+}
+
+function showToast(msg) {
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(function() { t.classList.remove("show"); }, 1500);
+}
+
+function escapeHtml(str) {
+  var d = document.createElement("div");
+  d.appendChild(document.createTextNode(str));
+  return d.innerHTML;
+}
+</script>
+
+</body>
+</html>
