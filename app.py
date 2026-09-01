@@ -212,12 +212,14 @@ if question:
 
     with st.chat_message("assistant"):
         with st.spinner("資料を探しています…"):
+            product_name = selected_product if selected_product != "指定なし" else ""
             retrieval = retrieve(
                 config,
                 full_query,
                 genres=selected_genres,
                 top_k=top_k,
                 use_expansion=use_expansion,
+                product_filter=product_name,
             )
 
         if retrieval.expanded_terms:

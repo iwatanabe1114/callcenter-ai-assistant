@@ -61,6 +61,7 @@ def retrieve(
     top_k: int | None = None,
     use_expansion: bool = True,
     use_genre_priority: bool = True,
+    product_filter: str = "",
 ) -> Retrieval:
     """質問文から関連資料を探す。"""
     target_genres = genres or CHAT_GENRES
@@ -86,12 +87,24 @@ def retrieve(
         expanded_weight=config.expanded_term_weight,
     )
 
+    k = top_k or config.top_k
+
     hits = index.search(
         terms,
-        top_k=top_k or config.top_k,
+        top_k=k * 3 if product_filter else k,
         genres=target_genres,
         use_genre_priority=use_genre_priority,
     )
+
+    # 商品名フィルタ: source_label やタイトルに商品名を含むドキュメントだけに絞る
+    if product_filter:
+        pf = product_filter.lower()
+        filtered = [
+            h for h in hits
+            if pf in h.source_label.lower() or pf in h.title.lower()
+        ]
+        hits = filtered[:k] if filtered else hits[:k]
+
     return Retrieval(hits=hits, original_terms=original, expanded_terms=expanded, terms=terms)
 
 
