@@ -13,10 +13,13 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("インシデント")
     .addItem("報告を作成", "showSidebar")
+    .addSeparator()
+    .addItem("テストA（サイドバー）", "showTestA")
+    .addItem("テストB（ダイアログ）", "showTestB")
     .addToUi();
 }
 
-// サイドバー表示
+// 既存サイドバー
 function showSidebar() {
   var html = HtmlService.createHtmlOutputFromFile("Sidebar")
     .setTitle("インシデント報告")
@@ -24,8 +27,25 @@ function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
-// テンプレートシート名
+// テストA: 新サイドバー（タブ付き）
+function showTestA() {
+  var html = HtmlService.createHtmlOutputFromFile("SidebarTestA")
+    .setTitle("テストA - インシデント報告")
+    .setWidth(400);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+// テストB: 新ダイアログ（2カラム）
+function showTestB() {
+  var html = HtmlService.createHtmlOutputFromFile("DialogTestB")
+    .setWidth(1050)
+    .setHeight(780);
+  SpreadsheetApp.getUi().showModalDialog(html, "テストB - インシデント報告");
+}
+
+// シート名
 var TEMPLATE_SHEET = "インシデントテンプレ （202411~）";
+var KARTE_SHEET = "カルテ項目";
 
 // 商品シートの一覧（これらのシート名を商品選択肢として使う）
 var PRODUCT_SHEETS = [
@@ -46,6 +66,16 @@ var PRODUCT_SHEETS = [
  */
 function getProductNames() {
   return PRODUCT_SHEETS;
+}
+
+/**
+ * カルテテンプレートを返す
+ */
+function getKarteTemplate() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ws = ss.getSheetByName(KARTE_SHEET);
+  if (!ws) return "";
+  return String(ws.getRange(1, 2).getValue() || "");
 }
 
 /**

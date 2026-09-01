@@ -14,6 +14,21 @@ from core.auth import LEVEL_CHAT, logout_button, require_login
 from core.config import CHAT_GENRES, GENRES, get_config
 from core.retrieval import clear_index, retrieve
 
+BRAND_NAME = "みなわ発酵"
+
+PRODUCT_NAMES = [
+    "爽軽青汁",
+    "メグレアpremium",
+    "メグレアlight",
+    "糖貫プロネス",
+    "肝匠プロネス",
+    "アイゼン",
+    "アユミルpremium",
+    "はつらつコラーゲン(クロス用)",
+    "すっぽん黒酢",
+    "LIPO CLEAR VITAMIN C",
+]
+
 ui.page_setup("コールセンターAIアシスタント")
 
 config = get_config()
@@ -41,31 +56,132 @@ def _auto_ingest():
 
 _auto_ingest()
 
-st.title("☎️ コールセンターAIアシスタント")
-st.caption("質問を入力すると、社内の資料から関係する情報を探して答えます。")
-
 if not require_login(LEVEL_CHAT):
     st.stop()
-logout_button(LEVEL_CHAT)
 
-ui.config_warnings(config)
-ui.freshness_notice(config, CHAT_GENRES)
+# ── カスタムCSS ─────────────────────────────────────────────
+st.markdown("""
+<style>
+    /* バッジ */
+    .brand-badge {
+        display: inline-block;
+        background: #1b3a5c;
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 4px;
+        margin-left: 10px;
+        vertical-align: middle;
+    }
+    /* メインヘッダー */
+    .main-header {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #1b3a5c;
+        margin-bottom: 2px;
+    }
+    .main-subtitle {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 4px;
+    }
+    /* 使い方ボックス */
+    .usage-box {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin: 12px 0;
+    }
+    .usage-box h4 {
+        color: #b8860b;
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+    }
+    .usage-box p {
+        font-size: 0.85rem;
+        color: #333;
+        line-height: 1.7;
+        margin: 0;
+    }
+    /* 緑帯 */
+    .green-bar {
+        background: #2e5c3e;
+        color: #fff;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 6px;
+        margin: 14px 0 6px 0;
+    }
+    /* サイドバー ブランドボタン */
+    .sidebar-brand-active {
+        background: #1b3a5c !important;
+        color: #fff !important;
+        border: none !important;
+        font-weight: 600 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ── サイドバー ───────────────────────────────────────────
-st.sidebar.header("検索の設定")
-selected_genres = st.sidebar.multiselect(
-    "探す資料の種類",
-    options=CHAT_GENRES,
-    default=CHAT_GENRES,
-    format_func=lambda g: GENRES.get(g, g),
-)
-use_expansion = st.sidebar.checkbox(
-    "言い換えも探す",
-    value=True,
-    help="「返品」と「返送」のように、言い方が違っても見つかるようにします（4.3）。",
-)
-top_k = st.sidebar.slider("AIに渡す資料の数", 3, 12, config.top_k)
+st.sidebar.markdown("### 🖊 AIアシスタント")
+st.sidebar.caption("別途業務サポートツール")
+st.sidebar.divider()
+
+st.sidebar.markdown("**ブランド選択**")
+st.sidebar.button(f"● {BRAND_NAME}", disabled=True, use_container_width=True, type="primary")
+
+st.sidebar.divider()
+logout_button(LEVEL_CHAT)
+
 ui.sidebar_footer(config)
+
+# ── メインヘッダー ────────────────────────────────────────
+st.markdown(
+    f'<div class="main-header">☎️ コールセンター AIアシスタント'
+    f'<span class="brand-badge">{BRAND_NAME}</span></div>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    '<div class="main-subtitle">パートスタッフ向け質問サポート ｜ 知識ベースを参照して正確に回答します</div>',
+    unsafe_allow_html=True,
+)
+
+# 知識ベース最終更新
+ui.freshness_notice(config, CHAT_GENRES)
+latest = cache_store.latest_timestamp(CHAT_GENRES) if hasattr(cache_store, "latest_timestamp") else None
+if latest:
+    st.caption(f"📚 知識ベース最終更新: {latest}")
+
+ui.config_warnings(config)
+
+# ── 使い方 ────────────────────────────────────────────────
+st.markdown("""
+<div class="usage-box">
+    <h4>🔖 使い方</h4>
+    <p>
+        下の入力欄に質問を入力して送信してください。返品・解約・キャンペーン・料金など、業務に関わることをなんでも聞けます。<br>
+        ⚠️ 知識ベースに記載がない場合は「記載がありません」とお伝えし、SVへの確認を促します。
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+# ── 商品名で絞り込み ──────────────────────────────────────
+st.markdown('<div class="green-bar">🎯 商品名で絞り込むと、回答精度が上がります</div>', unsafe_allow_html=True)
+
+selected_product = st.selectbox(
+    "商品名で絞り込み",
+    options=["指定なし"] + PRODUCT_NAMES,
+    index=0,
+    label_visibility="collapsed",
+)
+
+# ── 検索設定（内部で使用、UIには非表示）────────────────────
+selected_genres = CHAT_GENRES
+use_expansion = True
+top_k = config.top_k
 
 # ── 会話履歴 ─────────────────────────────────────────────
 if "messages" not in st.session_state:
@@ -84,9 +200,15 @@ for message in st.session_state["messages"]:
         if message.get("hits"):
             ui.render_sources(message["hits"])
 
-question = st.chat_input("例：定期便を2回で解約したいと言われました。どうすればいいですか？")
+question = st.chat_input("質問を入力してください（例：返品の手続きを教えて）…")
 
 if question:
+    # 商品名が選択されていればクエリに付加
+    if selected_product and selected_product != "指定なし":
+        full_query = f"【{selected_product}】{question}"
+    else:
+        full_query = question
+
     st.session_state["messages"].append({"role": "user", "content": question})
     with st.chat_message("user"):
         st.markdown(question)
@@ -95,8 +217,8 @@ if question:
         with st.spinner("資料を探しています…"):
             retrieval = retrieve(
                 config,
-                question,
-                genres=selected_genres or CHAT_GENRES,
+                full_query,
+                genres=selected_genres,
                 top_k=top_k,
                 use_expansion=use_expansion,
             )
@@ -123,7 +245,6 @@ if question:
                 result = llm.answer_question(config, question, retrieval.hits)
 
             if not result.ok:
-                # 4.4 途中で打ち切られた場合などは、結果を使わず安全な表示に切り替える
                 conclusion = result.failure_message
                 details = ""
                 caution = "下の参考資料をご自身で確認してください。"
@@ -143,7 +264,6 @@ if question:
 
                 ui.render_answer(conclusion, details, caution)
 
-            # 8.3 対策②：参照元はAIに書かせず、検索結果側の情報を機械的に表示する
             cited_ids = set(str(i) for i in (result.data.get("used_doc_ids", []) if result.ok else []))
             cited = [h for h in retrieval.hits if h.id in cited_ids] or retrieval.hits
             ui.render_sources(cited)

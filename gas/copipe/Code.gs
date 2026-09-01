@@ -17,8 +17,8 @@ function onOpen() {
 
 function showDialog() {
   var html = HtmlService.createHtmlOutputFromFile("Dialog")
-    .setWidth(900)
-    .setHeight(750);
+    .setWidth(1050)
+    .setHeight(780);
   SpreadsheetApp.getUi().showModalDialog(html, "インシデント報告");
 }
 
