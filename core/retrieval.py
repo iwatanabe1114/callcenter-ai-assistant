@@ -96,12 +96,14 @@ def retrieve(
         use_genre_priority=use_genre_priority,
     )
 
-    # 商品名フィルタ: source_label やタイトルに商品名を含むドキュメントだけに絞る
+    # 商品名フィルタ: 商材シート(product)は該当商品のみ、共通シートはそのまま通す
     if product_filter:
         pf = product_filter.lower()
         filtered = [
             h for h in hits
-            if pf in h.source_label.lower() or pf in h.title.lower()
+            if h.genre != "product"
+            or pf in h.source_label.lower()
+            or pf in h.title.lower()
         ]
         hits = filtered[:k] if filtered else hits[:k]
 
