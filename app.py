@@ -130,10 +130,6 @@ st.sidebar.markdown("### 🖊 AIアシスタント")
 st.sidebar.caption("別途業務サポートツール")
 st.sidebar.divider()
 
-st.sidebar.markdown("**ブランド選択**")
-st.sidebar.button(f"● {BRAND_NAME}", disabled=True, use_container_width=True, type="primary")
-
-st.sidebar.divider()
 logout_button(LEVEL_CHAT)
 
 ui.sidebar_footer(config)
