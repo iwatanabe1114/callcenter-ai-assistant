@@ -9,7 +9,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-# ログ用シート名
+# ログ専用スプレッドシート
+LOG_SPREADSHEET_ID = "15tx3NQZwlu0vnF-riLDO72oXt_nqD4cTpLEVh3RwMn4"
 LOG_SHEET_NAME = "AIログ"
 
 # ヘッダー行
@@ -39,7 +40,6 @@ def _get_or_create_sheet(gc: Any, spreadsheet_id: str) -> Any:
 
 def append_log(
     service_account_info: dict[str, Any],
-    spreadsheet_id: str,
     *,
     question: str,
     answer: str,
@@ -62,7 +62,7 @@ def append_log(
             ],
         )
         gc = gspread.authorize(creds)
-        ws = _get_or_create_sheet(gc, spreadsheet_id)
+        ws = _get_or_create_sheet(gc, LOG_SPREADSHEET_ID)
 
         now = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
         row = [

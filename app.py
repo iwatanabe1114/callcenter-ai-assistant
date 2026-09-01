@@ -238,10 +238,9 @@ if question:
                 {"role": "assistant", "content": conclusion, "details": "", "caution": caution, "hits": []}
             )
             # スプレッドシートにログ保存
-            if config.has_sheets and config.sources:
+            if config.has_sheets:
                 append_log(
                     config.service_account_info,
-                    config.sources[0].spreadsheet_id,
                     question=question,
                     answer=conclusion,
                     caution=caution,
@@ -299,11 +298,10 @@ if question:
                 }
             )
             # スプレッドシートにログ保存
-            if config.has_sheets and config.sources:
+            if config.has_sheets:
                 source_titles = " / ".join(h.title for h in cited[:5])
                 append_log(
                     config.service_account_info,
-                    config.sources[0].spreadsheet_id,
                     question=question,
                     answer=conclusion,
                     details=details,
