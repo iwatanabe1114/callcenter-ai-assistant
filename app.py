@@ -13,6 +13,7 @@ from core import cache_store, llm, ui, usage_log
 from core.auth import LEVEL_CHAT, logout_button, require_login
 from core.config import CHAT_GENRES, GENRES, get_config
 from core.retrieval import clear_index, retrieve
+from core.sheet_log import append_log
 
 BRAND_NAME = "みなわ発酵"
 
@@ -236,6 +237,17 @@ if question:
             st.session_state["messages"].append(
                 {"role": "assistant", "content": conclusion, "details": "", "caution": caution, "hits": []}
             )
+            # スプレッドシートにログ保存
+            if config.has_sheets and config.sources:
+                append_log(
+                    config.service_account_info,
+                    config.sources[0].spreadsheet_id,
+                    question=question,
+                    answer=conclusion,
+                    caution=caution,
+                    answered=False,
+                    product=selected_product if selected_product != "指定なし" else "",
+                )
         else:
             with st.spinner("答えを作っています…"):
                 result = llm.answer_question(config, question, retrieval.hits)
@@ -286,6 +298,21 @@ if question:
                     "hits": cited,
                 }
             )
+            # スプレッドシートにログ保存
+            if config.has_sheets and config.sources:
+                source_titles = " / ".join(h.title for h in cited[:5])
+                append_log(
+                    config.service_account_info,
+                    config.sources[0].spreadsheet_id,
+                    question=question,
+                    answer=conclusion,
+                    details=details,
+                    caution=caution,
+                    answered=answered,
+                    product=selected_product if selected_product != "指定なし" else "",
+                    sources=source_titles,
+                    model=result.model,
+                )
 
 if st.session_state["messages"]:
     if st.button("会話をリセット"):
