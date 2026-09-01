@@ -29,8 +29,8 @@ if not require_login(LEVEL_ADMIN):
 logout_button(LEVEL_ADMIN)
 ui.sidebar_footer(config)
 
-tab_data, tab_incident, tab_usage, tab_privacy, tab_config = st.tabs(
-    ["資料の状態", "インシデント", "利用状況", "個人情報の点検", "設定の確認"]
+tab_data, tab_incident, tab_usage, tab_feedback, tab_privacy, tab_config = st.tabs(
+    ["資料の状態", "インシデント", "利用状況", "フィードバック", "個人情報の点検", "設定の確認"]
 )
 
 # ── 資料の状態・再取得 ───────────────────────────────────
@@ -202,6 +202,84 @@ with tab_usage:
             file_name="usage.jsonl",
             mime="application/json",
         )
+
+# ── フィードバック分析 ─────────────────────────────────────
+with tab_feedback:
+    st.subheader("OPフィードバック分析")
+
+    try:
+        from core.sheet_log import FB_HEADERS, FB_SHEET_NAME, LOG_SPREADSHEET_ID
+
+        if not config.has_sheets:
+            st.info("スプレッドシートの設定がありません。")
+        else:
+            import gspread
+            from google.oauth2.service_account import Credentials
+
+            @st.cache_data(ttl=120, show_spinner="フィードバックを読み込み中…")
+            def _load_fb():
+                creds = Credentials.from_service_account_info(
+                    config.service_account_info,
+                    scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+                )
+                gc = gspread.authorize(creds)
+                book = gc.open_by_key(LOG_SPREADSHEET_ID)
+                try:
+                    ws = book.worksheet(FB_SHEET_NAME)
+                    rows = ws.get_all_values()
+                except Exception:
+                    return []
+                if len(rows) <= 1:
+                    return []
+                headers = rows[0]
+                return [dict(zip(headers, r)) for r in rows[1:]]
+
+            fb_data = _load_fb()
+
+            if not fb_data:
+                st.info("まだフィードバックがありません。")
+            else:
+                import pandas as pd
+                df = pd.DataFrame(fb_data)
+
+                # 集計
+                total = len(df)
+                counts = df["評価"].value_counts()
+                resolved = int(counts.get("解決", 0))
+                unresolved = int(counts.get("未解決", 0))
+                deepdive = int(counts.get("さらに深ぼる", 0))
+                newq = int(counts.get("別の質問をする", 0))
+
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("✅ 解決", resolved)
+                col2.metric("❌ 未解決", unresolved)
+                col3.metric("🔍 深ぼる", deepdive)
+                col4.metric("💬 別の質問", newq)
+
+                if total > 0:
+                    resolve_rate = round(resolved / total * 100, 1)
+                    st.metric("解決率", f"{resolve_rate}%")
+
+                # 評価の分布
+                st.subheader("評価の分布")
+                st.bar_chart(counts)
+
+                # 未解決の一覧
+                unresolved_df = df[df["評価"] == "未解決"]
+                if not unresolved_df.empty:
+                    st.subheader("未解決の質問")
+                    st.dataframe(
+                        unresolved_df[["日時", "商品名", "質問", "回答（先頭100字）", "コメント"]],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                # 全データ
+                with st.expander("全フィードバック一覧"):
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    except Exception as e:
+        st.error(f"フィードバックの読み込みに失敗しました: {e}")
 
 # ── 個人情報の点検 ───────────────────────────────────────
 with tab_privacy:

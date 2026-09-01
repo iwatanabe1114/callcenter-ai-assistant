@@ -13,7 +13,7 @@ from core import cache_store, llm, ui, usage_log
 from core.auth import LEVEL_CHAT, logout_button, require_login
 from core.config import CHAT_GENRES, GENRES, get_config
 from core.retrieval import clear_index, retrieve
-from core.sheet_log import append_log
+from core.sheet_log import append_feedback, append_log
 
 BRAND_NAME = "みなわ発酵"
 
@@ -314,7 +314,82 @@ if question:
                     model=result.model,
                 )
 
+# ── フィードバックボタン ─────────────────────────────────────
+if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "assistant":
+    last_msg = st.session_state["messages"][-1]
+    # 直前の質問を取得
+    last_question = ""
+    for m in reversed(st.session_state["messages"]):
+        if m["role"] == "user":
+            last_question = m["content"]
+            break
+
+    fb_key = f"fb_{len(st.session_state['messages'])}"
+    already_sent = st.session_state.get(f"{fb_key}_sent", False)
+
+    if not already_sent:
+        fb_cols = st.columns(4)
+        fb_resolved = fb_cols[0].button("✅ 解決", key=f"{fb_key}_resolved", use_container_width=True)
+        fb_unresolved = fb_cols[1].button("❌ 未解決", key=f"{fb_key}_unresolved", use_container_width=True)
+        fb_deepdive = fb_cols[2].button("🔍 さらに深ぼる", key=f"{fb_key}_deepdive", use_container_width=True)
+        fb_newq = fb_cols[3].button("💬 別の質問をする", key=f"{fb_key}_newq", use_container_width=True)
+
+        fb_value = ""
+        if fb_resolved:
+            fb_value = "解決"
+        elif fb_unresolved:
+            fb_value = "未解決"
+        elif fb_deepdive:
+            fb_value = "さらに深ぼる"
+        elif fb_newq:
+            fb_value = "別の質問をする"
+
+        if fb_value:
+            # 未解決の場合はコメント入力を促す（次回表示時）
+            if fb_value == "未解決":
+                st.session_state[f"{fb_key}_pending"] = fb_value
+                st.rerun()
+            else:
+                if config.has_sheets:
+                    append_feedback(
+                        config.service_account_info,
+                        question=last_question,
+                        answer=last_msg.get("content", ""),
+                        feedback=fb_value,
+                        product=selected_product if selected_product != "指定なし" else "",
+                    )
+                st.session_state[f"{fb_key}_sent"] = True
+                st.success(f"フィードバック「{fb_value}」を送信しました。")
+                st.rerun()
+
+    # 未解決のコメント入力
+    if st.session_state.get(f"{fb_key}_pending") == "未解決" and not already_sent:
+        with st.form(f"{fb_key}_comment_form"):
+            comment = st.text_area("どこが解決しなかったか教えてください（任意）", height=80, key=f"{fb_key}_comment")
+            submitted = st.form_submit_button("送信")
+        if submitted:
+            if config.has_sheets:
+                append_feedback(
+                    config.service_account_info,
+                    question=last_question,
+                    answer=last_msg.get("content", ""),
+                    feedback="未解決",
+                    comment=comment,
+                    product=selected_product if selected_product != "指定なし" else "",
+                )
+            st.session_state[f"{fb_key}_sent"] = True
+            del st.session_state[f"{fb_key}_pending"]
+            st.success("フィードバックを送信しました。")
+            st.rerun()
+
+    if already_sent:
+        st.caption("✔ フィードバック送信済み")
+
 if st.session_state["messages"]:
     if st.button("会話をリセット"):
         st.session_state["messages"] = []
+        # FB関連のsession_stateもクリア
+        for key in list(st.session_state.keys()):
+            if key.startswith("fb_"):
+                del st.session_state[key]
         st.rerun()
