@@ -20,6 +20,9 @@ from typing import Any
 from .config import CACHE_DIR
 
 INCIDENT_CACHE_PATH = CACHE_DIR / "incident_templates.json"
+KARTE_CACHE_PATH = CACHE_DIR / "karte_template.txt"
+KARTE_WORKSHEET = "カルテ項目"
+INCIDENT_WORKSHEET = "インシデントテンプレ （202411~）"
 
 
 @dataclass
@@ -179,6 +182,69 @@ def fill_content(content: str, product_name: str) -> str:
     result = re.sub(r"^〇〇", product_name, result)
     result = re.sub(r"^○○", product_name, result)
     return result
+
+
+# ── カルテ ────────────────────────────────────────────────
+
+def save_karte_cache(text: str) -> Path:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    KARTE_CACHE_PATH.write_text(text, encoding="utf-8")
+    return KARTE_CACHE_PATH
+
+
+def load_karte_cache() -> str:
+    if not KARTE_CACHE_PATH.exists():
+        return ""
+    return KARTE_CACHE_PATH.read_text(encoding="utf-8")
+
+
+def load_karte_from_gspread(
+    service_account_info: dict[str, Any],
+    spreadsheet_id: str,
+    worksheet_name: str = KARTE_WORKSHEET,
+) -> str:
+    """「カルテ項目」シートのB1セルからカルテテンプレートを取得する。"""
+    import gspread
+    from google.oauth2.service_account import Credentials
+
+    creds = Credentials.from_service_account_info(
+        service_account_info,
+        scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    )
+    gc = gspread.authorize(creds)
+    book = gc.open_by_key(spreadsheet_id)
+    try:
+        ws = book.worksheet(worksheet_name)
+        return str(ws.acell("B1").value or "")
+    except Exception:
+        return ""
+
+
+def auto_fetch_incident(config: Any) -> bool:
+    """起動時にスプレッドシートからインシデントテンプレートとカルテを自動取得する。"""
+    if not config.has_sheets or not config.sources:
+        return False
+    try:
+        spreadsheet_id = config.sources[0].spreadsheet_id
+        # インシデントテンプレート
+        tmpls = load_from_gspread(
+            config.service_account_info,
+            spreadsheet_id,
+            INCIDENT_WORKSHEET,
+        )
+        if tmpls:
+            save_cache(tmpls)
+        # カルテ
+        karte = load_karte_from_gspread(
+            config.service_account_info,
+            spreadsheet_id,
+            KARTE_WORKSHEET,
+        )
+        if karte:
+            save_karte_cache(karte)
+        return True
+    except Exception:
+        return False
 
 
 # ── xlsx / gspread からの読み込み ───────────────────────────
