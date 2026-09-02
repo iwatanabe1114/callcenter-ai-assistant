@@ -227,30 +227,6 @@
     <div class="section-label">解約希望理由</div>
     <select id="cancelReason" onchange="onRetentionChange(); onTemplateChange()">
       <option value="">-- 選択してください --</option>
-      <option value="定期認識なし">定期認識なし</option>
-      <option value="注文認識なし">注文認識なし</option>
-      <option value="変更認識なし">変更認識なし</option>
-      <option value="お試し">お試し</option>
-      <option value="未開封">未開封</option>
-      <option value="体に合わない">体に合わない</option>
-      <option value="味が苦手">味が苦手</option>
-      <option value="病院通院/薬服用のため">病院通院/薬服用のため</option>
-      <option value="効果がなかった">効果がなかった</option>
-      <option value="経済的理由">経済的理由</option>
-      <option value="余った">余った</option>
-      <option value="他商品へ切替">他商品へ切替</option>
-      <option value="満足した">満足した</option>
-      <option value="商品未着">商品未着</option>
-      <option value="理由不明">理由不明</option>
-      <option value="その他">その他</option>
-      <option value="※ ドクターストップ">※ ドクターストップ</option>
-      <option value="※ 長期不在">※ 長期不在</option>
-      <option value="※ 代理入電">※ 代理入電</option>
-      <option value="※ 処理ミス">※ 処理ミス</option>
-      <option value="※ 蕁麻疹">※ 蕁麻疹</option>
-      <option value="※ 冒頭切電">※ 冒頭切電</option>
-      <option value="※ 消費者センター発言">※ 消費者センター発言</option>
-      <option value="※ カスハラ該当">※ カスハラ該当</option>
     </select>
   </div>
 
@@ -259,19 +235,14 @@
     <div class="section-label">継続応援成功内訳</div>
     <select id="successDetail" onchange="onTemplateChange()">
       <option value="">-- 選択してください --</option>
-      <option value="変更なし">変更なし</option>
-      <option value="サイクル・袋数変更">サイクル・袋数変更</option>
-      <option value="スキップ・延長の提案">スキップ・延長の提案</option>
-      <option value="1.500pt利用">1.500pt利用</option>
-      <option value="ルール上での阻止">ルール上での阻止</option>
-      <option value="発送15日前メール">発送15日前メール</option>
-      <option value="新規ポイント利用">新規ポイント利用</option>
-      <option value="15日分プレゼント">15日分プレゼント</option>
-      <option value="送料無料">送料無料</option>
-      <option value="コース切替">コース切替</option>
-      <option value="ランク制度">ランク制度</option>
-      <option value="Lightへ切替">Lightへ切替</option>
-      <option value="該当なし">該当なし</option>
+    </select>
+  </div>
+
+  <!-- 継続応援中断理由 -->
+  <div class="section" id="stopReasonSection" style="display:none;">
+    <div class="section-label">継続応援中断理由</div>
+    <select id="stopReason" onchange="onTemplateChange()">
+      <option value="">-- 選択してください --</option>
     </select>
   </div>
 
@@ -327,7 +298,7 @@ var rawCategories = [];
 var displayCategories = [];
 var currentDisplayCategory = "";
 var currentProduct = "";
-var loaded = { templates: false, products: false, karte: false };
+var loaded = { templates: false, products: false, karte: false, choices: false };
 
 // 初期化
 google.script.run
@@ -365,8 +336,26 @@ google.script.run
   })
   .getKarteTemplate();
 
+google.script.run
+  .withSuccessHandler(function(choices) {
+    function fillSelect(id, items) {
+      var sel = document.getElementById(id);
+      items.forEach(function(name) {
+        var opt = document.createElement("option");
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+    }
+    fillSelect("cancelReason", choices.cancelReasons || []);
+    fillSelect("successDetail", choices.successDetails || []);
+    fillSelect("stopReason", choices.stopReasons || []);
+    loaded.choices = true;
+    checkReady();
+  })
+  .getChoices();
+
 function checkReady() {
-  if (loaded.templates && loaded.products && loaded.karte) {
+  if (loaded.templates && loaded.products && loaded.karte && loaded.choices) {
     document.getElementById("loading").style.display = "none";
     document.getElementById("tab-incident").style.display = "block";
     renderCategorySelect();
@@ -477,15 +466,17 @@ function onTemplateChange() {
   var retResult = document.getElementById("retentionResult").value;
   var cancelReason = document.getElementById("cancelReason").value;
   var successDetail = document.getElementById("successDetail").value;
+  var stopReason = document.getElementById("stopReason").value;
 
   var header = "商品名：" + currentProduct + "\n"
              + "カテゴリ：" + currentDisplayCategory + "\n"
              + "注文状況：" + orderStatus + "\n";
-  if (retResult || cancelReason || successDetail) {
+  if (retResult || cancelReason || successDetail || stopReason) {
     header += "\n";
     if (retResult) header += "継続応援結果：" + retResult + "\n";
     if (cancelReason) header += "解約希望理由：" + cancelReason + "\n";
     if (successDetail) header += "継続応援成功内訳：" + successDetail + "\n";
+    if (stopReason) header += "継続応援中断理由：" + stopReason + "\n";
   }
   header += "\n";
   document.getElementById("contentArea").value = header + fillContent(t.content);
@@ -514,12 +505,21 @@ function onTemplateChange() {
 function onRetentionChange() {
   var result = document.getElementById("retentionResult").value;
   var reason = document.getElementById("cancelReason").value;
-  var section = document.getElementById("successDetailSection");
+  // 成功内訳: 「成功」を含む結果 + 解約希望理由が選択されている場合
+  var successSection = document.getElementById("successDetailSection");
   if (result.indexOf("成功") >= 0 && reason) {
-    section.style.display = "block";
+    successSection.style.display = "block";
   } else {
-    section.style.display = "none";
+    successSection.style.display = "none";
     document.getElementById("successDetail").value = "";
+  }
+  // 中断理由: 継続応援結果が選択されている場合に表示
+  var stopSection = document.getElementById("stopReasonSection");
+  if (result) {
+    stopSection.style.display = "block";
+  } else {
+    stopSection.style.display = "none";
+    document.getElementById("stopReason").value = "";
   }
 }
 
@@ -551,6 +551,8 @@ function resetAll() {
   document.getElementById("cancelReason").value = "";
   document.getElementById("successDetail").value = "";
   document.getElementById("successDetailSection").style.display = "none";
+  document.getElementById("stopReason").value = "";
+  document.getElementById("stopReasonSection").style.display = "none";
   document.getElementById("titleArea").value = "";
   document.getElementById("contentArea").value = "";
   document.getElementById("memoArea").value = "";

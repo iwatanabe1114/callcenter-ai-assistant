@@ -321,14 +321,6 @@
         <label class="form-label">解約希望理由</label>
         <select id="cancelReason" class="form-select" onchange="onRetentionChange()">
           <option value="">-- 選択 --</option>
-          <option>定期認識なし</option><option>注文認識なし</option><option>変更認識なし</option>
-          <option>お試し</option><option>未開封</option><option>体に合わない</option>
-          <option>味が苦手</option><option>病院通院/薬服用のため</option><option>効果がなかった</option>
-          <option>経済的理由</option><option>余った</option><option>他商品へ切替</option>
-          <option>満足した</option><option>商品未着</option><option>理由不明</option><option>その他</option>
-          <option>※ ドクターストップ</option><option>※ 長期不在</option><option>※ 代理入電</option>
-          <option>※ 処理ミス</option><option>※ 蕁麻疹</option><option>※ 冒頭切電</option>
-          <option>※ 消費者センター発言</option><option>※ カスハラ該当</option>
         </select>
       </div>
 
@@ -336,11 +328,13 @@
         <label class="form-label">継続応援成功内訳</label>
         <select id="successDetail" class="form-select">
           <option value="">-- 選択 --</option>
-          <option>変更なし</option><option>サイクル・袋数変更</option><option>スキップ・延長の提案</option>
-          <option>1.500pt利用</option><option>ルール上での阻止</option><option>発送15日前メール</option>
-          <option>新規ポイント利用</option><option>15日分プレゼント</option><option>送料無料</option>
-          <option>コース切替</option><option>ランク制度</option><option>Lightへ切替</option>
-          <option>該当なし</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="stopReasonGroup" style="display:none;">
+        <label class="form-label">継続応援中断理由</label>
+        <select id="stopReason" class="form-select">
+          <option value="">-- 選択 --</option>
         </select>
       </div>
     </div>
@@ -449,11 +443,15 @@ Promise.all([
   }),
   new Promise(function(resolve) {
     google.script.run.withSuccessHandler(resolve).getKarteTemplate();
+  }),
+  new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(resolve).getChoices();
   })
 ]).then(function(results) {
   var tmplResult = results[0];
   var products = results[1];
   var karte = results[2];
+  var choices = results[3];
 
   allTemplates = tmplResult.templates || [];
   rawCategories = tmplResult.categories || [];
@@ -475,6 +473,19 @@ Promise.all([
 
   document.getElementById("karteArea").value = karte;
   updateCount("karteArea", "karteCount", 2000);
+
+  // 選択肢を動的セット
+  function fillSelect(id, items) {
+    var sel = document.getElementById(id);
+    (items || []).forEach(function(name) {
+      var opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  }
+  fillSelect("cancelReason", choices.cancelReasons);
+  fillSelect("successDetail", choices.successDetails);
+  fillSelect("stopReason", choices.stopReasons);
 
   document.getElementById("loading").style.display = "none";
   document.getElementById("app").style.display = "flex";
@@ -566,9 +577,12 @@ function onTemplateChange() {
 function onRetentionChange() {
   var ret = document.getElementById("retentionResult").value;
   var reason = document.getElementById("cancelReason").value;
-  var show = ret.indexOf("成功") >= 0 && reason;
-  document.getElementById("successDetailGroup").style.display = show ? "block" : "none";
-  if (!show) document.getElementById("successDetail").value = "";
+  var showSuccess = ret.indexOf("成功") >= 0 && reason;
+  document.getElementById("successDetailGroup").style.display = showSuccess ? "block" : "none";
+  if (!showSuccess) document.getElementById("successDetail").value = "";
+  // 中断理由: 継続応援結果が選択されている場合に表示
+  document.getElementById("stopReasonGroup").style.display = ret ? "block" : "none";
+  if (!ret) document.getElementById("stopReason").value = "";
 }
 
 // === 生成 ===
@@ -581,6 +595,7 @@ function generate() {
   var retention = document.getElementById("retentionResult").value;
   var cancelReason = document.getElementById("cancelReason").value;
   var successDetail = document.getElementById("successDetail").value;
+  var stopReason = document.getElementById("stopReason").value;
 
   // タイトル
   var title = "";
@@ -603,11 +618,12 @@ function generate() {
   lines.push("商品名：" + product);
   lines.push("カテゴリ：" + category);
   if (orderStatus) lines.push("注文状況：" + orderStatus);
-  if (retention || cancelReason || successDetail) {
+  if (retention || cancelReason || successDetail || stopReason) {
     lines.push("");
     if (retention) lines.push("継続応援結果：" + retention);
     if (cancelReason) lines.push("解約希望理由：" + cancelReason);
     if (successDetail) lines.push("継続応援成功内訳：" + successDetail);
+    if (stopReason) lines.push("継続応援中断理由：" + stopReason);
   }
   lines.push("");
 
@@ -633,6 +649,8 @@ function resetAll() {
   document.getElementById("cancelReason").value = "";
   document.getElementById("successDetail").value = "";
   document.getElementById("successDetailGroup").style.display = "none";
+  document.getElementById("stopReason").value = "";
+  document.getElementById("stopReasonGroup").style.display = "none";
   document.getElementById("titleArea").value = "";
   document.getElementById("contentArea").value = "";
   document.getElementById("memoArea").value = "";

@@ -46,6 +46,7 @@ function showTestB() {
 // シート名
 var TEMPLATE_SHEET = "インシデントテンプレ （202411~）";
 var KARTE_SHEET = "カルテ項目";
+var VOC_SHEET = "VOC/集計区分(20260128~)";
 
 // 商品シートの一覧（これらのシート名を商品選択肢として使う）
 var PRODUCT_SHEETS = [
@@ -76,6 +77,33 @@ function getKarteTemplate() {
   var ws = ss.getSheetByName(KARTE_SHEET);
   if (!ws) return "";
   return String(ws.getRange(1, 2).getValue() || "");
+}
+
+/**
+ * VOC/集計区分シートから選択肢を取得する
+ * 解約希望理由・継続成功内訳・継続応援中断理由
+ */
+function getChoices() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ws = ss.getSheetByName(VOC_SHEET);
+  if (!ws) return { cancelReasons: [], successDetails: [], stopReasons: [] };
+
+  function extractB(range) {
+    var values = ws.getRange(range).getValues();
+    var result = [];
+    for (var i = 0; i < values.length; i++) {
+      var b = String(values[i][1] || "").trim();
+      if (!b || b.indexOf("集計区分") >= 0 || b.indexOf("ボタン") >= 0) continue;
+      result.push(b);
+    }
+    return result;
+  }
+
+  return {
+    cancelReasons: extractB("A35:I52"),
+    successDetails: extractB("A55:I66"),
+    stopReasons: extractB("A94:H103"),
+  };
 }
 
 /**
