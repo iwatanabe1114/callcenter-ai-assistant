@@ -80,30 +80,64 @@ function getKarteTemplate() {
 }
 
 /**
- * VOC/集計区分シートから選択肢を取得する
- * 解約希望理由・継続成功内訳・継続応援中断理由
+ * VOC/集計区分シートから選択肢を動的に取得する。
+ * B列のヘッダー行をキーに検索し、次のセクションまでのB列の値を抽出する。
+ * シートに行を追加/削除するだけで自動反映される。
  */
 function getChoices() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var ws = ss.getSheetByName(VOC_SHEET);
   if (!ws) return { cancelReasons: [], successDetails: [], stopReasons: [] };
 
-  function extractB(range) {
-    var values = ws.getRange(range).getValues();
-    var result = [];
-    for (var i = 0; i < values.length; i++) {
-      var b = String(values[i][1] || "").trim();
-      if (!b || b.indexOf("集計区分") >= 0 || b.indexOf("ボタン") >= 0) continue;
-      result.push(b);
+  var data = ws.getDataRange().getValues();
+
+  // ヘッダーのキーワード → 結果キーのマッピング
+  var sections = {
+    "解約希望理由": "cancelReasons",
+    "継続応援成功内訳": "successDetails",
+    "継続応援中断理由": "stopReasons",
+  };
+
+  var result = { cancelReasons: [], successDetails: [], stopReasons: [] };
+  var currentKey = "";
+
+  for (var r = 0; r < data.length; r++) {
+    var a = String(data[r][0] || "").trim();
+    var b = String(data[r][1] || "").trim();
+
+    // ヘッダー行の検出: B列に「解約希望理由」「継続応援成功内訳」「継続応援中断理由」を含む
+    var foundSection = false;
+    for (var keyword in sections) {
+      if (b.indexOf(keyword) >= 0) {
+        currentKey = sections[keyword];
+        foundSection = true;
+        break;
+      }
     }
-    return result;
+    if (foundSection) continue;
+
+    // 別セクションのヘッダーに到達したらリセット
+    if (a === "コード" && (b.indexOf("集計区分") >= 0 || b.indexOf("ボタン") >= 0)) {
+      currentKey = "";
+      continue;
+    }
+
+    // データ行: currentKeyが設定されていてB列に値がある場合
+    if (currentKey && b && b !== "該当なし") {
+      result[currentKey].push(b);
+    }
+    // 「該当なし」は最後に追加するため別扱い
+    if (currentKey && b === "該当なし") {
+      result[currentKey].push(b);
+    }
+
+    // 空行でセクション終了
+    if (!a && !b) {
+      currentKey = "";
+    }
   }
 
-  return {
-    cancelReasons: extractB("A35:I52"),
-    successDetails: extractB("A55:I66"),
-    stopReasons: extractB("A94:H103"),
-  };
+  return result;
 }
 
 /**
