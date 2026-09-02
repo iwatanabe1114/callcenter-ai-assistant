@@ -533,6 +533,10 @@ function onProductChange() {
 
 function onOrderStatusChange() {
   showRetentionToggle();
+  // 継続応援「はい」の場合、施策を自動更新
+  if (document.getElementById("retentionToggle").value === "yes") {
+    showPolicies();
+  }
 }
 
 function showRetentionToggle() {
