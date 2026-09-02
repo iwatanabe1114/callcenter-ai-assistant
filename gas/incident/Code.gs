@@ -95,8 +95,9 @@ function getRetentionPolicies() {
     var name = String(data[r][0] || "").trim();
     var timing = String(data[r][1] || "").trim();
     var course = String(data[r][2] || "").trim();
+    var product = String(data[r][3] || "").trim();
     if (!name) continue;
-    policies.push({ name: name, timing: timing, course: course });
+    policies.push({ name: name, timing: timing, course: course, product: product });
   }
   return policies;
 }

@@ -595,11 +595,15 @@ function showPolicies() {
   if (m) orderNum = parseInt(m[1], 10);
   if (order === "F4~") orderNum = 99;
 
-  // 施策のタイミングから数値を取り出してフィルタ
+  // タイミング＋商材でフィルタ
+  var productName = document.getElementById("product").value;
   var filtered = allPolicies.filter(function(p) {
+    // タイミングチェック
     var pm = p.timing.match(/F(\d)/);
-    if (!pm) return true;
-    return parseInt(pm[1], 10) <= orderNum;
+    if (pm && parseInt(pm[1], 10) > orderNum) return false;
+    // 商材チェック: 「全て」または選択中の商材に一致
+    if (p.product && p.product !== "全て" && p.product !== productName) return false;
+    return true;
   });
 
   var listEl = document.getElementById("policyList");
