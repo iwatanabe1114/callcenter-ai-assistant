@@ -552,6 +552,9 @@ function onProductChange() {
   currentProduct = document.getElementById("product").value;
   updateTemplateList();
   showRetentionToggle();
+  if (document.getElementById("retentionToggle").value === "yes") {
+    showPolicies();
+  }
 }
 
 function onOrderStatusChange() {
