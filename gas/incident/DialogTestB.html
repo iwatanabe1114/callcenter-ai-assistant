@@ -285,6 +285,29 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label">注文状況</label>
+        <select id="orderStatus" class="form-select" onchange="onOrderStatusChange()">
+          <option value="">-- 選択 --</option>
+          <option>F1</option><option>F2</option><option>F3</option>
+          <option>F4~</option><option>発送前</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="retentionToggleGroup" style="display:none;">
+        <label class="form-label">継続応援を実施しますか？</label>
+        <select id="retentionToggle" class="form-select" onchange="onRetentionToggleChange()">
+          <option value="">-- 選択 --</option>
+          <option value="yes">はい</option>
+          <option value="no">いいえ</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="policyGroup" style="display:none;">
+        <label class="form-label">利用可能な施策</label>
+        <div id="policyList" style="background:#f0f7f0;border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.8;"></div>
+      </div>
+
+      <div class="form-group">
         <label class="form-label">対応カテゴリ</label>
         <select id="category" class="form-select" onchange="onCategoryChange()">
           <option value="">-- 選択 --</option>
@@ -295,15 +318,6 @@
         <label class="form-label">テンプレート</label>
         <select id="template" class="form-select" onchange="onTemplateChange()">
           <option value="">-- 選択 --</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">注文状況</label>
-        <select id="orderStatus" class="form-select">
-          <option value="">-- 選択 --</option>
-          <option>F1</option><option>F2</option><option>F3</option>
-          <option>F4~</option><option>発送前</option>
         </select>
       </div>
 
@@ -432,6 +446,7 @@ var rawCategories = [];
 var displayCategories = [];
 var currentProduct = "";
 var currentCategory = "";
+var allPolicies = [];
 
 // 初期化
 Promise.all([
@@ -446,12 +461,16 @@ Promise.all([
   }),
   new Promise(function(resolve) {
     google.script.run.withSuccessHandler(resolve).getChoices();
+  }),
+  new Promise(function(resolve) {
+    google.script.run.withSuccessHandler(resolve).getRetentionPolicies();
   })
 ]).then(function(results) {
   var tmplResult = results[0];
   var products = results[1];
   var karte = results[2];
   var choices = results[3];
+  allPolicies = results[4] || [];
 
   allTemplates = tmplResult.templates || [];
   rawCategories = tmplResult.categories || [];
@@ -510,6 +529,58 @@ function buildDisplayCategories() {
 function onProductChange() {
   currentProduct = document.getElementById("product").value;
   if (currentCategory) updateTemplateList();
+  showRetentionToggle();
+}
+
+function onOrderStatusChange() {
+  showRetentionToggle();
+}
+
+function showRetentionToggle() {
+  var product = document.getElementById("product").value;
+  var order = document.getElementById("orderStatus").value;
+  var group = document.getElementById("retentionToggleGroup");
+  if (product && order) {
+    group.style.display = "block";
+  } else {
+    group.style.display = "none";
+    document.getElementById("retentionToggle").value = "";
+    document.getElementById("policyGroup").style.display = "none";
+  }
+}
+
+function onRetentionToggleChange() {
+  var toggle = document.getElementById("retentionToggle").value;
+  if (toggle === "yes") {
+    showPolicies();
+  } else {
+    document.getElementById("policyGroup").style.display = "none";
+  }
+}
+
+function showPolicies() {
+  var order = document.getElementById("orderStatus").value;
+  if (!order) return;
+  var orderNum = 0;
+  var m = order.match(/F(\d)/);
+  if (m) orderNum = parseInt(m[1], 10);
+  if (order === "F4~") orderNum = 99;
+
+  var filtered = allPolicies.filter(function(p) {
+    var pm = p.timing.match(/F(\d)/);
+    if (!pm) return true;
+    return parseInt(pm[1], 10) <= orderNum;
+  });
+
+  var listEl = document.getElementById("policyList");
+  if (filtered.length === 0) {
+    listEl.innerHTML = "<span style='color:#888;'>利用可能な施策はありません</span>";
+  } else {
+    listEl.innerHTML = filtered.map(function(p) {
+      return "✅ " + escapeHtml(p.name) + " <span style='color:#888;font-size:10px;'>(" + escapeHtml(p.timing) + ")</span>";
+    }).join("<br>");
+  }
+  document.getElementById("policyGroup").style.display = "block";
 }
 
 function onCategoryChange() {
@@ -645,6 +716,9 @@ function resetAll() {
   document.getElementById("category").value = "";
   document.getElementById("template").innerHTML = '<option value="">-- 選択 --</option>';
   document.getElementById("orderStatus").value = "";
+  document.getElementById("retentionToggle").value = "";
+  document.getElementById("retentionToggleGroup").style.display = "none";
+  document.getElementById("policyGroup").style.display = "none";
   document.getElementById("retentionResult").value = "";
   document.getElementById("cancelReason").value = "";
   document.getElementById("successDetail").value = "";

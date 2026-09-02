@@ -47,6 +47,7 @@ function showTestB() {
 var TEMPLATE_SHEET = "インシデントテンプレ （202411~）";
 var KARTE_SHEET = "カルテ項目";
 var VOC_SHEET = "VOC/集計区分(20260128~)";
+var RETENTION_POLICY_SHEET = "継続応援施策DB";
 
 // 商品シートの一覧（これらのシート名を商品選択肢として使う）
 var PRODUCT_SHEETS = [
@@ -77,6 +78,27 @@ function getKarteTemplate() {
   var ws = ss.getSheetByName(KARTE_SHEET);
   if (!ws) return "";
   return String(ws.getRange(1, 2).getValue() || "");
+}
+
+/**
+ * 継続応援施策DBから施策一覧を取得する。
+ * 戻り値: [{ name: "施策名", timing: "F1~", course: "全て" }, ...]
+ */
+function getRetentionPolicies() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ws = ss.getSheetByName(RETENTION_POLICY_SHEET);
+  if (!ws) return [];
+
+  var data = ws.getDataRange().getValues();
+  var policies = [];
+  for (var r = 1; r < data.length; r++) {
+    var name = String(data[r][0] || "").trim();
+    var timing = String(data[r][1] || "").trim();
+    var course = String(data[r][2] || "").trim();
+    if (!name) continue;
+    policies.push({ name: name, timing: timing, course: course });
+  }
+  return policies;
 }
 
 /**
