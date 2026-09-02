@@ -302,11 +302,6 @@
         </select>
       </div>
 
-      <div class="form-group" id="policyGroup" style="display:none;">
-        <label class="form-label">利用可能な施策</label>
-        <div id="policyList" style="background:#f0f7f0;border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.8;"></div>
-      </div>
-
       <div class="form-group">
         <label class="form-label">対応カテゴリ</label>
         <select id="category" class="form-select" onchange="onCategoryChange()">
@@ -367,6 +362,10 @@
       <div class="suggestion-content">
         <div class="suggestion-title">可能な提案</div>
         <div class="suggestion-text" id="suggestionText">ここに提案内容やヒントが表示されます。例えば、対応の方向性や注意点などを表示します。</div>
+        <div id="policyArea" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #e8e8e8;">
+          <div style="font-size:12px;font-weight:600;color:#2e7d32;margin-bottom:6px;">利用可能な施策</div>
+          <div id="policyList" style="font-size:12px;line-height:1.8;"></div>
+        </div>
       </div>
       <div class="suggestion-icon">
         <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-3 13.33V17h6v-1.67A7 7 0 0012 2z"/></svg>
@@ -545,7 +544,7 @@ function showRetentionToggle() {
   } else {
     group.style.display = "none";
     document.getElementById("retentionToggle").value = "";
-    document.getElementById("policyGroup").style.display = "none";
+    document.getElementById("policyArea").style.display = "none";
   }
 }
 
@@ -554,7 +553,7 @@ function onRetentionToggleChange() {
   if (toggle === "yes") {
     showPolicies();
   } else {
-    document.getElementById("policyGroup").style.display = "none";
+    document.getElementById("policyArea").style.display = "none";
   }
 }
 
@@ -580,7 +579,7 @@ function showPolicies() {
       return "✅ " + escapeHtml(p.name) + " <span style='color:#888;font-size:10px;'>(" + escapeHtml(p.timing) + ")</span>";
     }).join("<br>");
   }
-  document.getElementById("policyGroup").style.display = "block";
+  document.getElementById("policyArea").style.display = "block";
 }
 
 function onCategoryChange() {
